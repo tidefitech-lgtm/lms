@@ -1,36 +1,109 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Community | TIDEF ITECH LMS Admin</title>
-<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="../css/style.css" />
-<style>
-  .post-card { border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:16px; margin-bottom:16px; background:var(--white); }
-  .post-head { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-  .post-avatar { width:36px; height:36px; border-radius:50%; background:var(--gradient-gold); color:var(--navy-900); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.85rem; flex-shrink:0; }
-  .post-actions { display:flex; gap:16px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border-subtle); }
-  .post-actions button { background:none; border:none; cursor:pointer; color:var(--text-secondary); font-size:0.88rem; font-weight:600; display:flex; align-items:center; gap:6px; }
-  .post-actions button.liked { color:var(--gold-600); }
-  .comment-row { padding:8px 0; border-top:1px solid var(--border-subtle); font-size:0.88rem; }
-  .comment-row:first-child { border-top:none; }
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Community | TIDEF ITECH LMS Admin</title>
+    <link
+      rel="icon"
+      href="https://www.tidefitech.com/img/Capture-removebg-preview.png"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+    <style>
+      .post-card {
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 16px;
+        margin-bottom: 16px;
+        background: var(--white);
+      }
+      .post-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .post-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--gradient-gold);
+        color: var(--navy-900);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+      }
+      .post-actions {
+        display: flex;
+        gap: 16px;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border-subtle);
+      }
+      .post-actions button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-secondary);
+        font-size: 0.88rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .post-actions button.liked {
+        color: var(--gold-600);
+      }
+      .comment-row {
+        padding: 8px 0;
+        border-top: 1px solid var(--border-subtle);
+        font-size: 0.88rem;
+      }
+      .comment-row:first-child {
+        border-top: none;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import { requireAuth } from "../js/guards.js";
+      import { renderAppShell } from "../js/components.js";
+      import {
+        getPosts,
+        createPost,
+        toggleLike,
+        getComments,
+        createComment,
+        deletePost,
+        deleteComment,
+      } from "../js/community.js";
+      import { uploadFile, getSignedUrl } from "../js/storage.js";
+      import {
+        escapeHtml,
+        formatDateTime,
+        getInitials,
+        showToast,
+        setButtonLoading,
+      } from "../js/utils.js";
 
-<script type="module">
-  import { requireAuth } from "../js/guards.js";
-  import { renderAppShell } from "../js/components.js";
-  import { getPosts, createPost, toggleLike, getComments, createComment, deletePost, deleteComment } from "../js/community.js";
-  import { uploadFile, getSignedUrl } from "../js/storage.js";
-  import { escapeHtml, formatDateTime, getInitials, showToast, setButtonLoading } from "../js/utils.js";
+      const { profile, user } = await requireAuth({
+        allowedRoles: ["admin", "super_admin"],
+      });
+      const content = renderAppShell({
+        role: profile.role,
+        profile,
+        pageTitle: "Community",
+        activeHref: "community.html",
+      });
 
-  const { profile, user } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
-  const content = renderAppShell({ role: profile.role, profile, pageTitle: "Community", activeHref: "community.html" });
-
-  content.innerHTML = `
+      content.innerHTML = `
     <div class="card mb-4">
       <form id="post-form">
         <textarea class="input" id="postBody" rows="3" placeholder="Share something with the TIDEF ITECH community…" required></textarea>
@@ -43,50 +116,65 @@
     <div id="feed"><div class="state-block"><div class="spinner"></div></div></div>
   `;
 
-  document.getElementById("post-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById("post-btn");
-    setButtonLoading(btn, true, "Posting…");
-    try {
-      const fileInput = document.getElementById("postFile");
-      let attachmentPath = null;
-      if (fileInput.files[0]) attachmentPath = await uploadFile("community-files", user.id, fileInput.files[0]);
-      await createPost({ body: document.getElementById("postBody").value.trim(), attachmentPath });
-      document.getElementById("post-form").reset();
-      loadFeed();
-    } catch (err) {
-      showToast(err.message || "Couldn't post.", "error");
-    }
-    setButtonLoading(btn, false);
-  });
+      document
+        .getElementById("post-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const btn = document.getElementById("post-btn");
+          setButtonLoading(btn, true, "Posting…");
+          try {
+            const fileInput = document.getElementById("postFile");
+            let attachmentPath = null;
+            if (fileInput.files[0])
+              attachmentPath = await uploadFile(
+                "community-files",
+                user.id,
+                fileInput.files[0],
+              );
+            await createPost({
+              body: document.getElementById("postBody").value.trim(),
+              attachmentPath,
+            });
+            document.getElementById("post-form").reset();
+            loadFeed();
+          } catch (err) {
+            showToast(err.message || "Couldn't post.", "error");
+          }
+          setButtonLoading(btn, false);
+        });
 
-  async function loadFeed() {
-    const feed = document.getElementById("feed");
-    feed.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
-    try {
-      const posts = await getPosts();
-      if (posts.length === 0) {
-        feed.innerHTML = `<div class="card"><div class="state-block"><p>No posts yet — be the first to share something!</p></div></div>`;
-        return;
+      async function loadFeed() {
+        const feed = document.getElementById("feed");
+        feed.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+        try {
+          const posts = await getPosts();
+          if (posts.length === 0) {
+            feed.innerHTML = `<div class="card"><div class="state-block"><p>No posts yet — be the first to share something!</p></div></div>`;
+            return;
+          }
+          feed.innerHTML = "";
+          for (const p of posts) feed.appendChild(await renderPost(p));
+        } catch (err) {
+          feed.innerHTML = `<div class="alert alert-danger">Couldn't load the feed.</div>`;
+        }
       }
-      feed.innerHTML = "";
-      for (const p of posts) feed.appendChild(await renderPost(p));
-    } catch (err) {
-      feed.innerHTML = `<div class="alert alert-danger">Couldn't load the feed.</div>`;
-    }
-  }
 
-  async function renderPost(p) {
-    const card = document.createElement("div");
-    card.className = "post-card";
-    const attachmentUrl = p.attachment_path ? await getSignedUrl("community-files", p.attachment_path) : null;
-    const canDelete = p.author_id === user.id || ["admin", "super_admin", "teacher"].includes(profile.role);
+      async function renderPost(p) {
+        const card = document.createElement("div");
+        card.className = "post-card";
+        const authorProfile = p.profiles || {};
+        const attachmentUrl = p.attachment_path
+          ? await getSignedUrl("community-files", p.attachment_path)
+          : null;
+        const canDelete =
+          p.author_id === user.id ||
+          ["admin", "super_admin", "teacher"].includes(profile.role);
 
-    card.innerHTML = `
+        card.innerHTML = `
       <div class="post-head">
-        <div class="post-avatar">${getInitials(p.profiles?.full_name)}</div>
+        <div class="post-avatar">${getInitials(authorProfile.full_name)}</div>
         <div>
-          <div style="font-weight:600;">${escapeHtml(p.profiles?.full_name || "Unknown")} ${p.profiles?.role !== "student" ? `<span class="badge badge-info" style="margin-left:4px;">${p.profiles.role}</span>` : ""}</div>
+          <div style="font-weight:600;">${escapeHtml(authorProfile.full_name || "Community member")} ${authorProfile.role && authorProfile.role !== "student" ? `<span class="badge badge-info" style="margin-left:4px;">${authorProfile.role}</span>` : ""}</div>
           <div class="text-secondary" style="font-size:0.78rem;">${formatDateTime(p.created_at)}</div>
         </div>
         ${canDelete ? `<button class="btn btn-ghost btn-sm" style="margin-left:auto;" data-action="delete-post">Delete</button>` : ""}
@@ -106,65 +194,93 @@
       </div>
     `;
 
-    card.querySelector('[data-action="delete-post"]')?.addEventListener("click", async () => {
-      if (!confirm("Delete this post?")) return;
-      try { await deletePost(p.id); loadFeed(); } catch (err) { showToast(err.message, "error"); }
-    });
+        card
+          .querySelector('[data-action="delete-post"]')
+          ?.addEventListener("click", async () => {
+            if (!confirm("Delete this post?")) return;
+            try {
+              await deletePost(p.id);
+              loadFeed();
+            } catch (err) {
+              showToast(err.message, "error");
+            }
+          });
 
-    card.querySelector('[data-action="like"]').addEventListener("click", async (e) => {
-      try {
-        const nowLiked = await toggleLike(p.id);
-        const btn = e.currentTarget;
-        btn.classList.toggle("liked", nowLiked);
-        const countEl = btn.querySelector('[data-role="like-count"]');
-        countEl.textContent = Number(countEl.textContent) + (nowLiked ? 1 : -1);
-        btn.innerHTML = `${nowLiked ? "★" : "☆"} <span data-role="like-count">${countEl.textContent}</span> Like${countEl.textContent === "1" ? "" : "s"}`;
-        btn.classList.toggle("liked", nowLiked);
-      } catch (err) { showToast("Couldn't update like.", "error"); }
-    });
+        card
+          .querySelector('[data-action="like"]')
+          .addEventListener("click", async (e) => {
+            try {
+              const nowLiked = await toggleLike(p.id);
+              const btn = e.currentTarget;
+              btn.classList.toggle("liked", nowLiked);
+              const countEl = btn.querySelector('[data-role="like-count"]');
+              countEl.textContent =
+                Number(countEl.textContent) + (nowLiked ? 1 : -1);
+              btn.innerHTML = `${nowLiked ? "★" : "☆"} <span data-role="like-count">${countEl.textContent}</span> Like${countEl.textContent === "1" ? "" : "s"}`;
+              btn.classList.toggle("liked", nowLiked);
+            } catch (err) {
+              showToast("Couldn't update like.", "error");
+            }
+          });
 
-    const commentsSection = card.querySelector('[data-role="comments-section"]');
-    let commentsLoaded = false;
-    card.querySelector('[data-action="toggle-comments"]').addEventListener("click", async () => {
-      commentsSection.classList.toggle("hidden");
-      if (!commentsLoaded && !commentsSection.classList.contains("hidden")) {
-        commentsLoaded = true;
-        await loadComments();
-      }
-    });
+        const commentsSection = card.querySelector(
+          '[data-role="comments-section"]',
+        );
+        let commentsLoaded = false;
+        card
+          .querySelector('[data-action="toggle-comments"]')
+          .addEventListener("click", async () => {
+            commentsSection.classList.toggle("hidden");
+            if (
+              !commentsLoaded &&
+              !commentsSection.classList.contains("hidden")
+            ) {
+              commentsLoaded = true;
+              await loadComments();
+            }
+          });
 
-    async function loadComments() {
-      const list = card.querySelector('[data-role="comments-list"]');
-      list.innerHTML = `<div class="text-secondary">Loading…</div>`;
-      const comments = await getComments(p.id);
-      list.innerHTML = comments.length === 0
-        ? `<p class="text-secondary" style="font-size:0.85rem;">No comments yet.</p>`
-        : comments.map((c) => `
+        async function loadComments() {
+          const list = card.querySelector('[data-role="comments-list"]');
+          list.innerHTML = `<div class="text-secondary">Loading…</div>`;
+          const comments = await getComments(p.id);
+          list.innerHTML =
+            comments.length === 0
+              ? `<p class="text-secondary" style="font-size:0.85rem;">No comments yet.</p>`
+              : comments
+                  .map(
+                    (c) => `
           <div class="comment-row">
             <strong>${escapeHtml(c.profiles?.full_name || "Unknown")}</strong>: ${escapeHtml(c.body)}
             <span class="text-secondary" style="font-size:0.75rem;"> · ${formatDateTime(c.created_at)}</span>
           </div>
-        `).join("");
-    }
+        `,
+                  )
+                  .join("");
+        }
 
-    card.querySelector('[data-role="comment-form"]').addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const input = card.querySelector('[data-role="comment-input"]');
-      const text = input.value.trim();
-      if (!text) return;
-      try {
-        await createComment(p.id, text);
-        input.value = "";
-        await loadComments();
-        const countEl = card.querySelector('[data-role="comment-count"]');
-        countEl.textContent = Number(countEl.textContent) + 1;
-      } catch (err) { showToast("Couldn't post comment.", "error"); }
-    });
+        card
+          .querySelector('[data-role="comment-form"]')
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const input = card.querySelector('[data-role="comment-input"]');
+            const text = input.value.trim();
+            if (!text) return;
+            try {
+              await createComment(p.id, text);
+              input.value = "";
+              await loadComments();
+              const countEl = card.querySelector('[data-role="comment-count"]');
+              countEl.textContent = Number(countEl.textContent) + 1;
+            } catch (err) {
+              showToast("Couldn't post comment.", "error");
+            }
+          });
 
-    return card;
-  }
+        return card;
+      }
 
-  loadFeed();
-</script>
-</body>
+      loadFeed();
+    </script>
+  </body>
 </html>

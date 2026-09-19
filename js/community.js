@@ -47,8 +47,16 @@ export async function getReplies(threadId) {
   return data || [];
 }
 
-export async function createThread({ courseId, lessonId, title, body, attachmentPath }) {
-  const { data: { user } } = await supabase.auth.getUser();
+export async function createThread({
+  courseId,
+  lessonId,
+  title,
+  body,
+  attachmentPath,
+}) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from("qa_threads")
     .insert({
@@ -66,10 +74,17 @@ export async function createThread({ courseId, lessonId, title, body, attachment
 }
 
 export async function createReply({ threadId, body, attachmentPath }) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { error } = await supabase
     .from("qa_replies")
-    .insert({ thread_id: threadId, author_id: user.id, body, attachment_path: attachmentPath || null });
+    .insert({
+      thread_id: threadId,
+      author_id: user.id,
+      body,
+      attachment_path: attachmentPath || null,
+    });
   if (error) throw error;
 }
 
@@ -91,31 +106,73 @@ export async function deleteReply(id) {
 // ---------- Community posts ----------
 
 export async function getPosts(limit = 30) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from("posts")
-    .select("*, profiles!author_id(full_name, role)")
+    .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
 
   const posts = data || [];
+  const authorIds = [
+    ...new Set(posts.map((post) => post.author_id).filter(Boolean)),
+  ];
+  const { data: publicProfiles, error: profileError } = await supabase.rpc(
+    "get_public_profiles",
+    { p_profile_ids: authorIds },
+  );
+  if (profileError) throw profileError;
+  const profilesById = new Map(
+    (publicProfiles || []).map((profile) => [profile.id, profile]),
+  );
+
   const withMeta = await Promise.all(
     posts.map(async (p) => {
-      const [{ count: likeCount }, myLike, { count: commentCount }] = await Promise.all([
-        supabase.from("post_likes").select("*", { count: "exact", head: true }).eq("post_id", p.id),
-        user ? supabase.from("post_likes").select("id").eq("post_id", p.id).eq("user_id", user.id).maybeSingle() : { data: null },
-        supabase.from("post_comments").select("*", { count: "exact", head: true }).eq("post_id", p.id),
-      ]);
-      return { ...p, likeCount: likeCount ?? 0, likedByMe: !!myLike?.data, commentCount: commentCount ?? 0 };
-    })
+      const [{ count: likeCount }, myLike, { count: commentCount }] =
+        await Promise.all([
+          supabase
+            .from("post_likes")
+            .select("*", { count: "exact", head: true })
+            .eq("post_id", p.id),
+          user
+            ? supabase
+                .from("post_likes")
+                .select("id")
+                .eq("post_id", p.id)
+                .eq("user_id", user.id)
+                .maybeSingle()
+            : { data: null },
+          supabase
+            .from("post_comments")
+            .select("*", { count: "exact", head: true })
+            .eq("post_id", p.id),
+        ]);
+      return {
+        ...p,
+        profiles: profilesById.get(p.author_id) || null,
+        likeCount: likeCount ?? 0,
+        likedByMe: !!myLike?.data,
+        commentCount: commentCount ?? 0,
+      };
+    }),
   );
   return withMeta;
 }
 
 export async function createPost({ body, attachmentPath }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  const { error } = await supabase.from("posts").insert({ author_id: user.id, body, attachment_path: attachmentPath || null });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from("posts")
+    .insert({
+      author_id: user.id,
+      body,
+      attachment_path: attachmentPath || null,
+    });
   if (error) throw error;
 }
 
@@ -127,16 +184,37 @@ export async function deletePost(id) {
 export async function getComments(postId) {
   const { data, error } = await supabase
     .from("post_comments")
-    .select("*, profiles!author_id(full_name)")
+    .select("*")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return data || [];
+
+  const comments = data || [];
+  const authorIds = [
+    ...new Set(comments.map((comment) => comment.author_id).filter(Boolean)),
+  ];
+  const { data: publicProfiles, error: profileError } = await supabase.rpc(
+    "get_public_profiles",
+    { p_profile_ids: authorIds },
+  );
+  if (profileError) throw profileError;
+  const profilesById = new Map(
+    (publicProfiles || []).map((profile) => [profile.id, profile]),
+  );
+
+  return comments.map((comment) => ({
+    ...comment,
+    profiles: profilesById.get(comment.author_id) || null,
+  }));
 }
 
 export async function createComment(postId, body) {
-  const { data: { user } } = await supabase.auth.getUser();
-  const { error } = await supabase.from("post_comments").insert({ post_id: postId, author_id: user.id, body });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from("post_comments")
+    .insert({ post_id: postId, author_id: user.id, body });
   if (error) throw error;
 }
 
@@ -146,14 +224,26 @@ export async function deleteComment(id) {
 }
 
 export async function toggleLike(postId) {
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: existing } = await supabase.from("post_likes").select("id").eq("post_id", postId).eq("user_id", user.id).maybeSingle();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: existing } = await supabase
+    .from("post_likes")
+    .select("id")
+    .eq("post_id", postId)
+    .eq("user_id", user.id)
+    .maybeSingle();
   if (existing) {
-    const { error } = await supabase.from("post_likes").delete().eq("id", existing.id);
+    const { error } = await supabase
+      .from("post_likes")
+      .delete()
+      .eq("id", existing.id);
     if (error) throw error;
     return false;
   }
-  const { error } = await supabase.from("post_likes").insert({ post_id: postId, user_id: user.id });
+  const { error } = await supabase
+    .from("post_likes")
+    .insert({ post_id: postId, user_id: user.id });
   if (error) throw error;
   return true;
 }

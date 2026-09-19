@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notifications | TIDEF ITECH LMS</title>
+    <link
+      rel="icon"
+      href="https://www.tidefitech.com/img/Capture-removebg-preview.png"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+    <style>
+      .notification-list {
+        display: grid;
+        gap: 12px;
+      }
+      .notification-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 16px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background: var(--white);
+      }
+      .notification-item.unread {
+        border-left: 4px solid var(--gold-500);
+        background: #fffdf6;
+      }
+      .notification-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+        background: var(--info-bg);
+        color: var(--info);
+        font-weight: 700;
+      }
+      .notification-content {
+        flex: 1;
+        min-width: 0;
+      }
+      .notification-title {
+        color: var(--navy-900);
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .notification-body {
+        margin: 0;
+        font-size: 0.9rem;
+        white-space: pre-wrap;
+      }
+      .notification-meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 8px;
+        color: var(--text-secondary);
+        font-size: 0.78rem;
+      }
+      .notification-read {
+        flex-shrink: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import { requireAuth } from "../js/guards.js";
+      import { renderAppShell } from "../js/components.js";
+      import { supabase } from "../js/supabase.js";
+      import { escapeHtml, formatDateTime, showToast } from "../js/utils.js";
+
+      const { profile, user } = await requireAuth({
+        allowedRoles: ["student"],
+      });
+      const content = renderAppShell({
+        role: "student",
+        profile,
+        pageTitle: "Notifications",
+        activeHref: "notifications.html",
+      });
+
+      content.innerHTML = `
+    <div class="flex items-center justify-between mb-4" style="gap:16px; flex-wrap:wrap;">
+      <div>
+        <h2 style="margin-bottom:4px;">Your notifications</h2>
+        <p style="margin:0;">Updates about your account, coursework, and certificates.</p>
+      </div>
+      <button class="btn btn-outline btn-sm" id="mark-all-read">Mark all as read</button>
+    </div>
+    <div class="card"><div id="notification-list"><div class="state-block"><div class="spinner"></div></div></div></div>
+  `;
+
+      const list = document.getElementById("notification-list");
+      const markAllButton = document.getElementById("mark-all-read");
+      let notifications = [];
+
+      async function loadNotifications() {
+        list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+        const { data, error } = await supabase
+          .from("notifications")
+          .select("id, title, body, read, created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        notifications = data || [];
+        renderNotifications();
+      }
+
+      function renderNotifications() {
+        const unreadCount = notifications.filter(
+          (notification) => !notification.read,
+        ).length;
+        markAllButton.disabled = unreadCount === 0;
+        if (notifications.length === 0) {
+          list.innerHTML = `<div class="state-block"><p>You have no notifications yet.</p></div>`;
+          return;
+        }
+
+        list.innerHTML = `<div class="notification-list">${notifications
+          .map(
+            (notification) => `
+      <article class="notification-item ${notification.read ? "" : "unread"}">
+        <div class="notification-icon" aria-hidden="true">${notification.read ? "✓" : "!"}</div>
+        <div class="notification-content">
+          <div class="notification-title">${escapeHtml(notification.title)}</div>
+          ${notification.body ? `<p class="notification-body">${escapeHtml(notification.body)}</p>` : ""}
+          <div class="notification-meta">
+            <span>${formatDateTime(notification.created_at)}</span>
+            ${notification.read ? "" : `<button class="btn btn-ghost btn-sm notification-read" data-notification-id="${notification.id}">Mark as read</button>`}
+          </div>
+        </div>
+      </article>
+    `,
+          )
+          .join("")}</div>`;
+
+        list.querySelectorAll("[data-notification-id]").forEach((button) => {
+          button.addEventListener("click", () =>
+            markAsRead(button.dataset.notificationId),
+          );
+        });
+      }
+
+      async function markAsRead(notificationId) {
+        const { error } = await supabase
+          .from("notifications")
+          .update({ read: true })
+          .eq("id", notificationId)
+          .eq("user_id", user.id);
+        if (error) {
+          showToast("Couldn't update notification.", "error");
+          return;
+        }
+        const notification = notifications.find(
+          (item) => item.id === notificationId,
+        );
+        if (notification) notification.read = true;
+        renderNotifications();
+      }
+
+      markAllButton.addEventListener("click", async () => {
+        markAllButton.disabled = true;
+        const { error } = await supabase
+          .from("notifications")
+          .update({ read: true })
+          .eq("user_id", user.id)
+          .eq("read", false);
+        if (error) {
+          markAllButton.disabled = false;
+          showToast("Couldn't update notifications.", "error");
+          return;
+        }
+        notifications.forEach((notification) => {
+          notification.read = true;
+        });
+        renderNotifications();
+      });
+
+      try {
+        await loadNotifications();
+      } catch (err) {
+        list.innerHTML = `<div class="alert alert-danger">Couldn't load notifications.</div>`;
+      }
+    </script>
+  </body>
+</html>
