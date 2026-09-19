@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Q&A | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .t-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+  .t-row:last-child { border-bottom:none; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getTeacherCourses } from "/js/courses.js";
+  import { getThreadsForCourses } from "/js/community.js";
+  import { escapeHtml, formatDateTime } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["teacher"] });
+  const content = renderAppShell({ role: "teacher", profile, pageTitle: "Q&A", activeHref: "questions.html" });
+
+  content.innerHTML = `<h2>Student Questions</h2><div class="card"><div id="list"><div class="state-block"><div class="spinner"></div></div></div></div>`;
+
+  try {
+    const myCourses = await getTeacherCourses();
+    const threads = await getThreadsForCourses(myCourses.map((c) => c.id));
+    const list = document.getElementById("list");
+
+    if (threads.length === 0) {
+      list.innerHTML = `<div class="state-block"><p>No questions yet.</p></div>`;
+    } else {
+      list.innerHTML = threads.map((t) => `
+        <div class="t-row">
+          <div>
+            <div style="font-weight:600; color:var(--navy-900);">${escapeHtml(t.title)}</div>
+            <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(t.courses?.name || "")}${t.lessons ? " · " + escapeHtml(t.lessons.title) : ""} · ${escapeHtml(t.profiles?.full_name || "Unknown")} · ${formatDateTime(t.created_at)}</div>
+          </div>
+          <div class="flex items-center gap-3">
+            ${t.is_resolved ? '<span class="badge badge-success">Resolved</span>' : '<span class="badge badge-warning">Needs answer</span>'}
+            <a class="btn btn-outline btn-sm" href="/teacher/question-thread.html?id=${t.id}">Open</a>
+          </div>
+        </div>
+      `).join("");
+    }
+  } catch (err) {
+    document.getElementById("list").innerHTML = `<div class="alert alert-danger">Couldn't load questions.</div>`;
+  }
+</script>
+</body>
+</html>

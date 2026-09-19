@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getTeacherCourses } from "/js/courses.js";
+  import { supabase } from "/js/supabase.js";
+  import { escapeHtml } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["teacher"] });
+  const content = renderAppShell({ role: "teacher", profile, pageTitle: "Dashboard", activeHref: "dashboard.html" });
+
+  content.innerHTML = `
+    <h2>Welcome, ${profile.full_name?.split(" ")[0] || "Teacher"} 👋</h2>
+    <div class="stat-grid mb-4" id="stat-grid">
+      <div class="stat-card"><div class="spinner"></div><div class="stat-label">Assigned Courses</div></div>
+      <div class="stat-card"><div class="stat-value">0</div><div class="stat-label">Students</div></div>
+      <div class="stat-card"><div class="stat-value">0</div><div class="stat-label">Ungraded Submissions</div></div>
+      <div class="stat-card"><div class="stat-value">0</div><div class="stat-label">Open Questions</div></div>
+    </div>
+    <div class="card">
+      <div class="flex items-center justify-between mb-2">
+        <h3 style="margin:0;">Assigned Courses</h3>
+        <a href="/teacher/courses.html" class="btn btn-outline btn-sm">View All</a>
+      </div>
+      <div id="courses-preview"><div class="state-block"><div class="spinner"></div></div></div>
+    </div>
+  `;
+
+  try {
+    const courses = await getTeacherCourses();
+    const cards = document.querySelectorAll("#stat-grid .stat-card");
+    cards[0].innerHTML = `<div class="stat-value">${courses.length}</div><div class="stat-label">Assigned Courses</div>`;
+
+    const preview = document.getElementById("courses-preview");
+    preview.innerHTML = courses.length === 0
+      ? `<div class="state-block"><p>No courses assigned to you yet. An admin will assign you a course once it's set up.</p></div>`
+      : courses.slice(0, 5).map((c) => `
+        <a href="/teacher/course-editor.html?id=${c.id}" style="text-decoration:none; color:inherit; display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border-subtle);">
+          <span>${escapeHtml(c.name)}</span>
+          <span class="badge ${c.status === "published" ? "badge-success" : "badge-neutral"}">${c.status}</span>
+        </a>
+      `).join("");
+
+    const courseIds = courses.map((c) => c.id);
+    if (courseIds.length > 0) {
+      const [{ count: studentCount }, { count: ungradedCount }] = await Promise.all([
+        supabase.from("enrollments").select("*", { count: "exact", head: true }).in("course_id", courseIds),
+        supabase.from("submissions").select("*", { count: "exact", head: true }).in("course_id", courseIds).eq("status", "submitted"),
+      ]);
+      cards[1].innerHTML = `<div class="stat-value">${studentCount ?? 0}</div><div class="stat-label">Students</div>`;
+      cards[2].innerHTML = `<div class="stat-value">${ungradedCount ?? 0}</div><div class="stat-label">Ungraded Submissions</div>`;
+    }
+  } catch (err) {
+    document.getElementById("courses-preview").innerHTML = `<div class="alert alert-danger">Couldn't load your courses.</div>`;
+  }
+</script>
+</body>
+</html>

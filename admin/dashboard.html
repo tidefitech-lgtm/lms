@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard | TIDEF ITECH LMS Admin</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { supabase } from "/js/supabase.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: "Dashboard", activeHref: "dashboard.html" });
+
+  content.innerHTML = `
+    <h2>Admin Overview</h2>
+    <div class="stat-grid mb-4" id="stat-grid">
+      <div class="stat-card"><div class="spinner"></div><div class="stat-label">Total Students</div></div>
+      <div class="stat-card"><div class="spinner"></div><div class="stat-label">Pending Approval</div></div>
+      <div class="stat-card"><div class="spinner"></div><div class="stat-label">Payments Awaiting Review</div></div>
+      <div class="stat-card"><div class="spinner"></div><div class="stat-label">Approved &amp; Active</div></div>
+    </div>
+    <div class="card mb-4">
+      <div class="flex items-center justify-between mb-4">
+        <h3 style="margin:0;">Payment Confirmations Waiting For Review</h3>
+        <a href="/admin/payment-verification.html" class="btn btn-outline btn-sm">Open Payment Verification</a>
+      </div>
+      <div id="payment-preview"><div class="state-block"><div class="spinner"></div></div></div>
+    </div>
+
+    <div class="card">
+      <div class="flex items-center justify-between mb-4">
+        <h3 style="margin:0;">Courses</h3>
+        <a href="/admin/courses.html" class="btn btn-outline btn-sm">Manage Courses</a>
+      </div>
+      <div id="courses-summary"><div class="state-block"><div class="spinner"></div></div></div>
+    </div>
+  `;
+
+  (async () => {
+    const summary = document.getElementById("courses-summary");
+    try {
+      const { getAllCourses } = await import("/js/courses.js");
+      const courses = await getAllCourses();
+      const published = courses.filter((c) => c.status === "published").length;
+      const draft = courses.filter((c) => c.status === "draft").length;
+      summary.innerHTML = `
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-value">${courses.length}</div><div class="stat-label">Total Courses</div></div>
+          <div class="stat-card"><div class="stat-value">${published}</div><div class="stat-label">Published</div></div>
+          <div class="stat-card"><div class="stat-value">${draft}</div><div class="stat-label">Drafts</div></div>
+        </div>`;
+    } catch (err) {
+      summary.innerHTML = `<div class="state-block"><p>Couldn't load course summary.</p></div>`;
+    }
+  })();
+
+  (async () => {
+    const preview = document.getElementById("payment-preview");
+    try {
+      const { data, error } = await supabase
+        .from("payment_confirmations")
+        .select("id, submitted_at, profiles!student_id(full_name), courses(name)")
+        .eq("payment_status", "pending_verification")
+        .order("submitted_at", { ascending: true })
+        .limit(5);
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        preview.innerHTML = `<div class="state-block"><p>Nothing waiting for review right now.</p></div>`;
+        return;
+      }
+      preview.innerHTML = data
+        .map(
+          (r) => `
+          <div class="flex items-center justify-between" style="padding:10px 0; border-bottom:1px solid var(--border-subtle);">
+            <span>${r.profiles?.full_name || "Unknown"} — ${r.courses?.name || "—"}</span>
+            <span class="badge badge-warning">Pending</span>
+          </div>`
+        )
+        .join("");
+    } catch (err) {
+      preview.innerHTML = `<div class="state-block"><p>Couldn't load preview.</p></div>`;
+    }
+  })();
+
+  async function countStudents(filters = {}) {
+    try {
+      let query = supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "student");
+      for (const [col, val] of Object.entries(filters)) {
+        query = query.eq(col, val);
+      }
+      const { count, error } = await query;
+      if (error) throw error;
+      return count ?? 0;
+    } catch (err) {
+      console.error(err);
+      return "—";
+    }
+  }
+
+  const [total, pending, awaitingPayment, active] = await Promise.all([
+    countStudents(),
+    countStudents({ account_status: "pending" }),
+    countStudents({ payment_status: "pending_verification" }),
+    countStudents({ account_status: "approved" }),
+  ]);
+
+  const grid = document.getElementById("stat-grid");
+  grid.innerHTML = `
+    <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Total Students</div></div>
+    <div class="stat-card"><div class="stat-value">${pending}</div><div class="stat-label">Pending Approval</div></div>
+    <div class="stat-card"><div class="stat-value">${awaitingPayment}</div><div class="stat-label">Payments Awaiting Review</div></div>
+    <div class="stat-card"><div class="stat-value">${active}</div><div class="stat-label">Approved &amp; Active</div></div>
+  `;
+</script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Assignments | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .a-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+  .a-row:last-child { border-bottom:none; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getTeacherCourses } from "/js/courses.js";
+  import { getAssignmentsForCourses, createAssignment } from "/js/assignments.js";
+  import { showToast, setButtonLoading, escapeHtml, formatDateTime } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["teacher"] });
+  const content = renderAppShell({ role: "teacher", profile, pageTitle: "Assignments", activeHref: "assignments.html" });
+
+  content.innerHTML = `
+    <div class="flex items-center justify-between mb-4" style="flex-wrap:wrap; gap:12px;">
+      <h2 style="margin:0;">Assignments</h2>
+      <button class="btn btn-primary" id="new-btn">+ New Assignment</button>
+    </div>
+    <div class="card mb-4 hidden" id="new-card">
+      <h3>Create Assignment</h3>
+      <div id="create-alert"></div>
+      <form id="create-form">
+        <div class="field"><label for="courseId">Course</label><select class="input" id="courseId" required></select></div>
+        <div class="field"><label for="title">Title</label><input class="input" id="title" required /></div>
+        <div class="field"><label for="instructions">Instructions</label><textarea class="input" id="instructions" rows="3"></textarea></div>
+        <div class="form-row-2">
+          <div class="field"><label for="maxMarks">Max marks</label><input class="input" type="number" id="maxMarks" value="100" min="1" /></div>
+          <div class="field"><label for="dueAt">Due date</label><input class="input" type="datetime-local" id="dueAt" /></div>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" id="allowResubmission" checked /> Allow resubmission after grading</label>
+        </div>
+        <div class="flex gap-3">
+          <button type="submit" class="btn btn-primary" id="create-btn">Create</button>
+          <button type="button" class="btn btn-ghost" id="cancel-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+    <div class="card"><div id="list"><div class="state-block"><div class="spinner"></div></div></div></div>
+  `;
+
+  let myCourses = [];
+  try {
+    myCourses = await getTeacherCourses();
+    document.getElementById("courseId").innerHTML = myCourses.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("") || '<option value="">No assigned courses</option>';
+  } catch {}
+
+  document.getElementById("new-btn").addEventListener("click", () => document.getElementById("new-card").classList.toggle("hidden"));
+  document.getElementById("cancel-btn").addEventListener("click", () => document.getElementById("new-card").classList.add("hidden"));
+
+  document.getElementById("create-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById("create-alert");
+    alertBox.innerHTML = "";
+    const btn = document.getElementById("create-btn");
+    setButtonLoading(btn, true, "Creating…");
+    try {
+      const dueAtVal = document.getElementById("dueAt").value;
+      await createAssignment({
+        course_id: document.getElementById("courseId").value,
+        title: document.getElementById("title").value.trim(),
+        instructions: document.getElementById("instructions").value.trim() || null,
+        max_marks: Number(document.getElementById("maxMarks").value) || 100,
+        due_at: dueAtVal ? new Date(dueAtVal).toISOString() : null,
+        allow_resubmission: document.getElementById("allowResubmission").checked,
+      });
+      showToast("Assignment created.", "success");
+      document.getElementById("create-form").reset();
+      document.getElementById("new-card").classList.add("hidden");
+      loadList();
+    } catch (err) {
+      alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message)}</div>`;
+    }
+    setButtonLoading(btn, false);
+  });
+
+  async function loadList() {
+    const list = document.getElementById("list");
+    list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const assignments = await getAssignmentsForCourses(myCourses.map((c) => c.id));
+      if (assignments.length === 0) {
+        list.innerHTML = `<div class="state-block"><p>No assignments yet.</p></div>`;
+        return;
+      }
+      list.innerHTML = assignments.map((a) => `
+        <div class="a-row">
+          <div>
+            <div style="font-weight:600; color:var(--navy-900);">${escapeHtml(a.title)}</div>
+            <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(a.courses?.name || "")} · Due ${a.due_at ? formatDateTime(a.due_at) : "No deadline"} · ${a.max_marks} marks</div>
+          </div>
+          <a class="btn btn-outline btn-sm" href="/teacher/assignment-grading.html?id=${a.id}">View Submissions</a>
+        </div>
+      `).join("");
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-danger">Couldn't load assignments.</div>`;
+    }
+  }
+
+  loadList();
+</script>
+</body>
+</html>

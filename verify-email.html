@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Verify Your Email | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-visual">
+    <div class="brand">
+      <img src="https://www.tidefitech.com/img/Capture-removebg-preview.png" alt="TIDEF ITECH" />
+      <span class="brand-name">TIDEF ITECH LMS</span>
+    </div>
+    <div>
+      <h2>Almost there — just confirm it's you.</h2>
+      <p>Verifying your email keeps your TIDEF ITECH account secure and lets our team reach you about your enrollment.</p>
+    </div>
+    <p style="font-size:0.82rem;">© 2026 TIDEF ITECH — Makurdi, Benue State</p>
+  </div>
+
+  <div class="auth-form-side">
+    <div class="auth-form-wrap">
+      <div class="eyebrow">ONE MORE STEP</div>
+      <h1>Verify your email address</h1>
+      <p class="sub" id="sub-text">We've sent a verification link to your email. Click it — this page will pick it up automatically once you're back.</p>
+
+      <div id="form-alert"></div>
+
+      <button class="btn btn-primary btn-block" id="ive-verified-btn">I've Clicked The Link — Continue</button>
+
+      <div class="field mt-4">
+        <label for="resend-email">Didn't get it? Confirm your email and resend</label>
+        <input class="input" type="email" id="resend-email" placeholder="you@example.com" />
+      </div>
+      <button class="btn btn-outline btn-block" id="resend-btn">Resend Verification Email</button>
+
+      <p class="switch-link"><a href="/login.html">&larr; Back to log in</a></p>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { resendVerificationEmail, getUserProfile, getFreshUser } from "/js/auth.js";
+  import { supabase } from "/js/supabase.js";
+  import { ROLE_HOME_PAGE } from "/js/config.js";
+  import { showToast, setButtonLoading, getQueryParam } from "/js/utils.js";
+
+  const emailFromQuery = getQueryParam("email") || "";
+  document.getElementById("resend-email").value = emailFromQuery;
+
+  const iveVerifiedBtn = document.getElementById("ive-verified-btn");
+  const resendBtn = document.getElementById("resend-btn");
+  const alertBox = document.getElementById("form-alert");
+
+  async function proceedIfConfirmed() {
+    const user = await getFreshUser();
+    if (!user || !user.email_confirmed_at) return false;
+
+    const profile = await getUserProfile(user.id);
+    if (profile?.role === "student" && profile.account_status !== "approved") {
+      window.location.href = "/student/pending-approval.html";
+    } else {
+      window.location.href = ROLE_HOME_PAGE[profile?.role] || "/student/dashboard.html";
+    }
+    return true;
+  }
+
+  // If the confirmation link just redirected here, supabase-js auto-parses
+  // the token from the URL and establishes a session — check right away.
+  proceedIfConfirmed();
+
+  // Also react if that parsing finishes a moment after page load.
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_IN") proceedIfConfirmed();
+  });
+
+  iveVerifiedBtn.addEventListener("click", async () => {
+    setButtonLoading(iveVerifiedBtn, true, "Checking…");
+    const proceeded = await proceedIfConfirmed();
+    if (!proceeded) {
+      alertBox.innerHTML = `<div class="alert alert-warning">We haven't seen a verification yet. Please check your inbox (and spam folder) and click the link first.</div>`;
+      setButtonLoading(iveVerifiedBtn, false);
+    }
+  });
+
+  resendBtn.addEventListener("click", async () => {
+    const email = document.getElementById("resend-email").value.trim();
+    if (!email) {
+      showToast("Enter your email address first.", "error");
+      return;
+    }
+    setButtonLoading(resendBtn, true, "Sending…");
+    try {
+      await resendVerificationEmail(email);
+      showToast("Verification email sent again.", "success");
+    } catch (err) {
+      showToast("Couldn't resend right now. Try again shortly.", "error");
+    }
+    setButtonLoading(resendBtn, false);
+  });
+</script>
+</body>
+</html>

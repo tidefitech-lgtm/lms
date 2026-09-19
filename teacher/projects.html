@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Projects | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .proj-card { border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:16px; margin-bottom:16px; }
+  .proj-head { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  .proj-links a { margin-right:10px; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getTeacherCourses } from "/js/courses.js";
+  import { getProjectsForCourses, gradeProject } from "/js/projects.js";
+  import { getSignedUrl, fileNameFromPath } from "/js/storage.js";
+  import { showToast, setButtonLoading, escapeHtml, formatDateTime } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["teacher"] });
+  const content = renderAppShell({ role: "teacher", profile, pageTitle: "Projects", activeHref: "projects.html" });
+
+  content.innerHTML = `<h2>Student Projects</h2><div id="list"><div class="state-block"><div class="spinner"></div></div></div>`;
+
+  const myCourses = await getTeacherCourses();
+
+  async function loadProjects() {
+    const list = document.getElementById("list");
+    list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const projects = await getProjectsForCourses(myCourses.map((c) => c.id));
+      if (projects.length === 0) {
+        list.innerHTML = `<div class="card"><div class="state-block"><p>No project submissions yet.</p></div></div>`;
+        return;
+      }
+      list.innerHTML = "";
+      for (const p of projects) list.appendChild(await renderProject(p));
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-danger">Couldn't load projects.</div>`;
+    }
+  }
+
+  async function renderProject(p) {
+    const card = document.createElement("div");
+    card.className = "proj-card";
+    const fileLink = p.file_path ? await getSignedUrl("project-files", p.file_path) : null;
+    const screenshots = await Promise.all((p.screenshot_paths || []).map((path) => getSignedUrl("project-files", path)));
+
+    card.innerHTML = `
+      <div class="proj-head">
+        <div>
+          <strong>${escapeHtml(p.title)}</strong>
+          <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(p.profiles?.full_name || "Unknown")} (${escapeHtml(p.profiles?.student_id || "—")}) · ${escapeHtml(p.courses?.name || "")}</div>
+        </div>
+        <span class="badge ${p.status === "graded" ? "badge-success" : "badge-warning"}">${p.status}</span>
+      </div>
+      ${p.description ? `<p>${escapeHtml(p.description)}</p>` : ""}
+      <div class="proj-links mb-2">
+        ${p.github_url ? `<a href="${escapeHtml(p.github_url)}" target="_blank" rel="noopener">💻 GitHub</a>` : ""}
+        ${p.live_url ? `<a href="${escapeHtml(p.live_url)}" target="_blank" rel="noopener">🌐 Live Site</a>` : ""}
+        ${fileLink ? `<a href="${fileLink}" target="_blank" rel="noopener">📎 ${escapeHtml(fileNameFromPath(p.file_path))}</a>` : ""}
+      </div>
+      ${screenshots.length ? `<div class="flex gap-2 mb-2" style="flex-wrap:wrap;">${screenshots.filter(Boolean).map((s) => `<img src="${s}" style="height:80px; border-radius:8px; border:1px solid var(--border-subtle);" />`).join("")}</div>` : ""}
+      <p class="text-secondary" style="font-size:0.85rem;">Submitted ${formatDateTime(p.submitted_at)}</p>
+      <form data-role="grade-form" class="mt-2">
+        <div class="form-row-2">
+          <div class="field"><label>Grade (0–100)</label><input class="input" type="number" min="0" max="100" step="0.5" data-role="grade-input" value="${p.grade ?? ""}" required /></div>
+          <div class="field"><label>Feedback</label><input class="input" data-role="feedback-input" value="${escapeHtml(p.feedback || "")}" /></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">${p.status === "graded" ? "Update Grade" : "Submit Grade"}</button>
+      </form>
+    `;
+
+    card.querySelector('[data-role="grade-form"]').addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = e.currentTarget.querySelector("button");
+      setButtonLoading(btn, true, "Saving…");
+      try {
+        await gradeProject(
+          p.id,
+          Number(card.querySelector('[data-role="grade-input"]').value),
+          card.querySelector('[data-role="feedback-input"]').value.trim()
+        );
+        showToast("Grade saved.", "success");
+        loadProjects();
+      } catch (err) {
+        showToast(err.message || "Couldn't save grade.", "error");
+        setButtonLoading(btn, false);
+      }
+    });
+
+    return card;
+  }
+
+  loadProjects();
+</script>
+</body>
+</html>

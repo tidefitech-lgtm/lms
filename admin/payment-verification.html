@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Payment Verification | TIDEF ITECH LMS Admin</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .pv-card { border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-4); background: var(--white); }
+  .pv-card .pv-head { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; align-items: flex-start; margin-bottom: var(--space-3); }
+  .pv-card .pv-name { font-weight: 700; color: var(--navy-900); font-family: var(--font-display); }
+  .pv-card .pv-meta { color: var(--text-secondary); font-size: 0.85rem; }
+  .pv-details { display: none; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: var(--space-3); background: var(--off-white); border-radius: var(--radius-md); padding: var(--space-4); margin: var(--space-3) 0; }
+  .pv-details.open { display: grid; }
+  .pv-details .pv-field label { display:block; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color: var(--text-secondary); margin-bottom:2px; }
+  .pv-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+  .pv-reject-box { display: none; margin-top: var(--space-3); background: var(--danger-bg); border-radius: var(--radius-md); padding: var(--space-4); }
+  .pv-reject-box.open { display: block; }
+  .reviewed-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-subtle); font-size: 0.88rem; gap: 12px; flex-wrap: wrap; }
+  .reviewed-row:last-child { border-bottom: none; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getPendingPaymentConfirmations, getRecentReviewedConfirmations, confirmPayment, rejectPayment } from "/js/payments.js";
+  import { showToast, setButtonLoading, formatDate, formatDateTime, escapeHtml } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: "Payment Verification", activeHref: "payment-verification.html" });
+
+  content.innerHTML = `
+    <div class="mb-4">
+      <h2 style="margin-bottom:4px;">Payment Confirmations Waiting For Review</h2>
+      <p class="text-secondary">Check each payment against TIDEF ITECH's external payment records before confirming. Confirming grants course access and assigns a Student ID; rejecting requires a reason.</p>
+    </div>
+    <div id="pending-list"></div>
+    <div class="card mt-4">
+      <h3>Recently Reviewed</h3>
+      <div id="reviewed-list"><div class="state-block"><div class="spinner"></div></div></div>
+    </div>
+  `;
+
+  const pendingList = document.getElementById("pending-list");
+  const reviewedList = document.getElementById("reviewed-list");
+
+  async function loadPending() {
+    pendingList.innerHTML = `<div class="state-block"><div class="spinner"></div><p>Loading submissions…</p></div>`;
+    try {
+      const rows = await getPendingPaymentConfirmations();
+      if (rows.length === 0) {
+        pendingList.innerHTML = `<div class="card"><div class="state-block"><p>Nothing waiting for review right now.</p></div></div>`;
+        return;
+      }
+      pendingList.innerHTML = "";
+      rows.forEach((row) => pendingList.appendChild(renderCard(row)));
+    } catch (err) {
+      pendingList.innerHTML = `<div class="alert alert-danger">Couldn't load submissions: ${escapeHtml(err.message || "unknown error")}</div>`;
+    }
+  }
+
+  async function loadReviewed() {
+    try {
+      const rows = await getRecentReviewedConfirmations(10);
+      if (rows.length === 0) {
+        reviewedList.innerHTML = `<p class="text-secondary">No reviewed submissions yet.</p>`;
+        return;
+      }
+      reviewedList.innerHTML = rows
+        .map((r) => `
+          <div class="reviewed-row">
+            <span>${escapeHtml(r.profiles?.full_name || "Unknown")} ${r.profiles?.student_id ? `<span class="text-secondary">(${escapeHtml(r.profiles.student_id)})</span>` : ""} — ${escapeHtml(r.courses?.name || "—")}</span>
+            <span class="badge ${r.payment_status === "confirmed" ? "badge-success" : "badge-danger"}">${r.payment_status}</span>
+            <span class="text-secondary">${formatDateTime(r.verified_at)}</span>
+          </div>
+        `)
+        .join("");
+    } catch (err) {
+      reviewedList.innerHTML = `<p class="text-secondary">Couldn't load history.</p>`;
+    }
+  }
+
+  function renderCard(row) {
+    const card = document.createElement("div");
+    card.className = "pv-card";
+    const studentName = escapeHtml(row.profiles?.full_name || "Unknown student");
+    const studentIdText = row.profiles?.student_id ? escapeHtml(row.profiles.student_id) : "Not yet assigned";
+    const courseName = escapeHtml(row.courses?.name || "Not specified");
+
+    card.innerHTML = `
+      <div class="pv-head">
+        <div>
+          <div class="pv-name">${studentName}</div>
+          <div class="pv-meta">Student ID: ${studentIdText} · ${courseName}</div>
+        </div>
+        <span class="badge badge-warning">Pending Verification</span>
+      </div>
+      <div class="pv-meta">Submitted ${formatDateTime(row.submitted_at)}</div>
+
+      <div class="pv-details" data-role="details">
+        <div class="pv-field"><label>Email</label>${escapeHtml(row.profiles?.email || "—")}</div>
+        <div class="pv-field"><label>Phone</label>${escapeHtml(row.profiles?.phone || "—")}</div>
+        <div class="pv-field"><label>Payment reference</label>${escapeHtml(row.payment_reference || "—")}</div>
+        <div class="pv-field"><label>Payment date</label>${row.payment_date ? formatDate(row.payment_date) : "—"}</div>
+        <div class="pv-field"><label>Payment method</label>${escapeHtml(row.payment_method || "—")}</div>
+        <div class="pv-field" style="grid-column:1/-1;"><label>Student note</label>${escapeHtml(row.student_note || "—")}</div>
+      </div>
+
+      <div class="pv-actions mt-2">
+        <button class="btn btn-outline btn-sm" data-action="view">View Details</button>
+        <button class="btn btn-success btn-sm" data-action="confirm">Confirm Payment</button>
+        <button class="btn btn-danger btn-sm" data-action="reject">Reject Payment</button>
+      </div>
+
+      <div class="pv-reject-box" data-role="reject-box">
+        <label for="reject-note-${row.id}" style="font-weight:600; font-size:0.88rem; display:block; margin-bottom:6px;">Reason for rejection (required, shown to the student)</label>
+        <textarea class="input" id="reject-note-${row.id}" rows="2" placeholder="e.g. No matching transaction found for this reference number"></textarea>
+        <div class="flex gap-2 mt-2">
+          <button class="btn btn-danger btn-sm" data-action="confirm-reject">Confirm Rejection</button>
+          <button class="btn btn-ghost btn-sm" data-action="cancel-reject">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    card.querySelector('[data-action="view"]').addEventListener("click", () => {
+      card.querySelector('[data-role="details"]').classList.toggle("open");
+    });
+
+    card.querySelector('[data-action="confirm"]').addEventListener("click", async (e) => {
+      if (!window.confirm(`Confirm that you've verified ${row.profiles?.full_name || "this student"}'s payment against TIDEF ITECH's records? This will approve their account and grant course access.`)) return;
+      const btn = e.currentTarget;
+      setButtonLoading(btn, true, "Confirming…");
+      try {
+        await confirmPayment(row.id, null);
+        showToast(`Payment confirmed for ${row.profiles?.full_name || "student"}.`, "success");
+        card.remove();
+        loadReviewed();
+        if (!pendingList.children.length) loadPending();
+      } catch (err) {
+        showToast(err.message || "Couldn't confirm payment.", "error");
+        setButtonLoading(btn, false);
+      }
+    });
+
+    card.querySelector('[data-action="reject"]').addEventListener("click", () => {
+      card.querySelector('[data-role="reject-box"]').classList.add("open");
+    });
+    card.querySelector('[data-action="cancel-reject"]').addEventListener("click", () => {
+      card.querySelector('[data-role="reject-box"]').classList.remove("open");
+    });
+
+    card.querySelector('[data-action="confirm-reject"]').addEventListener("click", async (e) => {
+      const textarea = card.querySelector(`#reject-note-${row.id}`);
+      const reason = textarea.value.trim();
+      if (!reason) {
+        textarea.focus();
+        showToast("Please enter a reason for the student.", "error");
+        return;
+      }
+      const btn = e.currentTarget;
+      setButtonLoading(btn, true, "Rejecting…");
+      try {
+        await rejectPayment(row.id, reason);
+        showToast(`Payment rejected for ${row.profiles?.full_name || "student"}.`, "info");
+        card.remove();
+        loadReviewed();
+        if (!pendingList.children.length) loadPending();
+      } catch (err) {
+        showToast(err.message || "Couldn't reject payment.", "error");
+        setButtonLoading(btn, false);
+      }
+    });
+
+    return card;
+  }
+
+  loadPending();
+  loadReviewed();
+</script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Settings | TIDEF ITECH LMS Admin</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getSettings, updateSetting } from "/js/admin.js";
+  import { showToast, setButtonLoading } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: "Settings", activeHref: "settings.html" });
+
+  content.innerHTML = `<div class="card"><div class="state-block"><div class="spinner"></div></div></div>`;
+
+  try {
+    const settings = await getSettings();
+    content.innerHTML = `
+      <div class="card">
+        <h3>Site Information</h3>
+        <p class="text-secondary">These values are shown to students in a few places across the LMS — e.g. the support phone number on the suspended-account screen.</p>
+        <div id="settings-alert"></div>
+        <form id="settings-form">
+          <div class="field"><label for="site_name">Site name</label><input class="input" id="site_name" value="${settings.site_name || ""}" /></div>
+          <div class="field"><label for="support_phone">Support phone</label><input class="input" id="support_phone" value="${settings.support_phone || ""}" /></div>
+          <div class="field"><label for="support_email">Support email</label><input class="input" id="support_email" value="${settings.support_email || ""}" /></div>
+          <button type="submit" class="btn btn-primary" id="save-btn">Save Settings</button>
+        </form>
+      </div>
+    `;
+
+    document.getElementById("settings-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const alertBox = document.getElementById("settings-alert");
+      alertBox.innerHTML = "";
+      const btn = document.getElementById("save-btn");
+      setButtonLoading(btn, true, "Saving…");
+      try {
+        await Promise.all([
+          updateSetting("site_name", document.getElementById("site_name").value.trim()),
+          updateSetting("support_phone", document.getElementById("support_phone").value.trim()),
+          updateSetting("support_email", document.getElementById("support_email").value.trim()),
+        ]);
+        showToast("Settings saved.", "success");
+      } catch (err) {
+        alertBox.innerHTML = `<div class="alert alert-danger">${err.message || "Couldn't save settings."}</div>`;
+      }
+      setButtonLoading(btn, false);
+    });
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-danger">Couldn't load settings.</div>`;
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Certificates | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .cert-card { border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:20px; margin-bottom:16px; background:var(--white); display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+  .cert-icon { width:52px; height:52px; border-radius:var(--radius-md); background:var(--gradient-gold); display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex-shrink:0; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getMyCertificates } from "/js/certificates.js";
+  import { getSignedUrl } from "/js/storage.js";
+  import { escapeHtml, formatDate } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["student"] });
+  const content = renderAppShell({ role: "student", profile, pageTitle: "Certificates", activeHref: "certificates.html" });
+
+  content.innerHTML = `<div id="list"><div class="state-block"><div class="spinner"></div></div></div>`;
+
+  try {
+    const certs = await getMyCertificates();
+    const list = document.getElementById("list");
+    if (certs.length === 0) {
+      list.innerHTML = `<div class="card"><div class="state-block"><p>No certificates yet. Once you complete a course, TIDEF ITECH will issue your certificate here.</p></div></div>`;
+    } else {
+      const rows = await Promise.all(certs.map(async (c) => {
+        const link = await getSignedUrl("certificates", c.file_path);
+        return `
+          <div class="cert-card">
+            <div class="flex items-center gap-3">
+              <div class="cert-icon">📜</div>
+              <div>
+                <div style="font-weight:700; color:var(--navy-900);">${escapeHtml(c.courses?.name || "")}</div>
+                <div class="text-secondary" style="font-size:0.85rem;">Certificate No. ${escapeHtml(c.certificate_number)} · Issued ${formatDate(c.issued_at)}</div>
+              </div>
+            </div>
+            ${link ? `<a class="btn btn-primary btn-sm" href="${link}" target="_blank" rel="noopener">Download</a>` : ""}
+          </div>
+        `;
+      }));
+      list.innerHTML = rows.join("");
+    }
+  } catch (err) {
+    document.getElementById("list").innerHTML = `<div class="alert alert-danger">Couldn't load your certificates.</div>`;
+  }
+</script>
+</body>
+</html>

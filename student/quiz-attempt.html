@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Attempt | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .timer-bar { position:sticky; top:0; z-index:10; background:var(--navy-900); color:#fff; padding:12px 20px; border-radius:var(--radius-md); display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+  .timer-bar.low-time { background:var(--danger); }
+  .q-card { background:var(--white); border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:20px; margin-bottom:16px; }
+  .opt-choice { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border-subtle); border-radius:var(--radius-md); margin-bottom:8px; cursor:pointer; }
+  .opt-choice:hover { background:var(--off-white); }
+</style>
+</head>
+<body>
+
+<div style="max-width:760px; margin:0 auto; padding:24px;">
+  <div id="page-body"><div class="state-block"><div class="spinner"></div><p>Preparing your attempt…</p></div></div>
+</div>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { startAttempt, getAttempt, getAttemptQuestions, submitAttempt, getAssessment } from "/js/assessments.js";
+  import { escapeHtml, getQueryParam, showToast } from "/js/utils.js";
+
+  const assessmentId = getQueryParam("id");
+  if (!assessmentId) window.location.href = "/student/quizzes.html";
+
+  const { profile } = await requireAuth({ allowedRoles: ["student"] });
+  const body = document.getElementById("page-body");
+
+  let assessment, attemptId, attempt, questions;
+  try {
+    assessment = await getAssessment(assessmentId);
+    attemptId = await startAttempt(assessmentId);
+    attempt = await getAttempt(attemptId);
+    questions = await getAttemptQuestions(assessmentId);
+  } catch (err) {
+    body.innerHTML = `<div class="card"><div class="state-block"><p>${escapeHtml(err.message || "Couldn't start this attempt.")}</p><a href="/student/${assessment?.kind === "exam" ? "exams" : "quizzes"}.html" class="btn btn-outline">Back</a></div></div>`;
+    throw err;
+  }
+
+  if (attempt.status !== "in_progress") {
+    window.location.href = `/student/quiz-results.html?attempt=${attemptId}`;
+  }
+
+  if (questions.length === 0) {
+    body.innerHTML = `<div class="card"><div class="state-block"><p>This ${assessment.kind} doesn't have any questions yet.</p></div></div>`;
+    throw new Error("no questions");
+  }
+
+  const backLabel = assessment.kind === "exam" ? "Exam" : "Quiz";
+  let submitted = false;
+  let timerInterval = null;
+
+  body.innerHTML = `
+    ${attempt.time_limit_minutes ? `<div class="timer-bar" id="timer-bar"><span>${escapeHtml(assessment.title)}</span><strong id="timer-display">--:--</strong></div>` : `<h2>${escapeHtml(assessment.title)}</h2>`}
+    <form id="attempt-form">
+      ${questions.map((q, i) => `
+        <div class="q-card">
+          <p style="font-weight:600; color:var(--navy-900);">${i + 1}. ${escapeHtml(q.question_text)} <span class="text-secondary" style="font-weight:400; font-size:0.82rem;">(${q.points} pt${q.points == 1 ? "" : "s"})</span></p>
+          ${(q.options || []).map((o) => `
+            <label class="opt-choice">
+              <input type="${q.question_type === "multi_select" ? "checkbox" : "radio"}" name="q-${q.question_id}" value="${o.id}" />
+              <span>${escapeHtml(o.option_text)}</span>
+            </label>
+          `).join("")}
+        </div>
+      `).join("")}
+      <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Submit ${backLabel}</button>
+    </form>
+  `;
+
+  function collectAnswers() {
+    return questions.map((q) => {
+      const inputs = document.querySelectorAll(`input[name="q-${q.question_id}"]:checked`);
+      return { question_id: q.question_id, selected_option_ids: Array.from(inputs).map((el) => el.value) };
+    });
+  }
+
+  async function doSubmit(auto = false) {
+    if (submitted) return;
+    submitted = true;
+    if (timerInterval) clearInterval(timerInterval);
+    try {
+      await submitAttempt(attemptId, collectAnswers(), auto);
+      window.location.href = `/student/quiz-results.html?attempt=${attemptId}`;
+    } catch (err) {
+      submitted = false;
+      showToast(err.message || "Couldn't submit. Please try again.", "error");
+    }
+  }
+
+  document.getElementById("attempt-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!confirm(`Submit this ${backLabel.toLowerCase()}? You won't be able to change your answers after this.`)) return;
+    doSubmit(false);
+  });
+
+  if (attempt.time_limit_minutes) {
+    const deadline = new Date(attempt.started_at).getTime() + attempt.time_limit_minutes * 60000;
+    const display = document.getElementById("timer-display");
+    const bar = document.getElementById("timer-bar");
+
+    function tick() {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        display.textContent = "0:00";
+        showToast("Time's up — submitting automatically.", "info");
+        doSubmit(true);
+        return;
+      }
+      const totalSeconds = Math.floor(remainingMs / 1000);
+      const mins = Math.floor(totalSeconds / 60);
+      const secs = totalSeconds % 60;
+      display.textContent = `${mins}:${String(secs).padStart(2, "0")}`;
+      if (remainingMs < 60000) bar.classList.add("low-time");
+    }
+    tick();
+    timerInterval = setInterval(tick, 1000);
+  }
+
+  window.addEventListener("beforeunload", () => { if (timerInterval) clearInterval(timerInterval); });
+</script>
+</body>
+</html>

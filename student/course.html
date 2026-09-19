@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Course | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .learn-shell { display:grid; grid-template-columns: 300px 1fr; gap:24px; align-items:start; }
+  .learn-sidebar { position:sticky; top:16px; background:var(--white); border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:16px; max-height:calc(100vh - 120px); overflow-y:auto; }
+  .learn-sidebar .module-title { font-weight:700; color:var(--navy-900); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.03em; margin:16px 0 8px; }
+  .learn-sidebar .module-title:first-child { margin-top:0; }
+  .lesson-link { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:var(--radius-md); font-size:0.88rem; color:var(--text-primary); cursor:pointer; }
+  .lesson-link:hover { background:var(--off-white); }
+  .lesson-link.active { background:var(--gradient-gold); color:var(--navy-900); font-weight:600; }
+  .lesson-link .tick { flex-shrink:0; width:18px; text-align:center; }
+  .progress-bar-track { background:var(--border-subtle); border-radius:var(--radius-pill); height:8px; overflow:hidden; }
+  .progress-bar-fill { background:var(--gradient-gold); height:100%; transition:width 0.3s ease; }
+  .video-wrap { position:relative; width:100%; padding-top:56.25%; background:#000; border-radius:var(--radius-md); overflow:hidden; }
+  .video-wrap iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .lesson-content-text { white-space:pre-wrap; line-height:1.7; }
+  @media (max-width: 900px) {
+    .learn-shell { grid-template-columns: 1fr; }
+    .learn-sidebar { position:static; max-height:none; }
+  }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getCurriculum, getMyEnrolledCourses } from "/js/courses.js";
+  import {
+    getProgressForCourse, recordVideoProgress, markLessonComplete, computeCourseProgress,
+    getNote, saveNote, isBookmarked, toggleBookmark, extractYouTubeId,
+  } from "/js/learning.js";
+  import { escapeHtml, getQueryParam, showToast, setButtonLoading } from "/js/utils.js";
+
+  const courseId = getQueryParam("id");
+  if (!courseId) window.location.href = "/student/courses.html";
+
+  const { profile } = await requireAuth({ allowedRoles: ["student"] });
+  const content = renderAppShell({ role: "student", profile, pageTitle: "Course", activeHref: "courses.html" });
+
+  content.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+
+  const enrolled = await getMyEnrolledCourses();
+  const match = enrolled.find((e) => e.courses.id === courseId);
+  if (!match) {
+    content.innerHTML = `<div class="card"><div class="state-block"><p>You're not enrolled in this course.</p><a href="/student/courses.html" class="btn btn-outline">Back to My Courses</a></div></div>`;
+    throw new Error("not enrolled");
+  }
+  const course = match.courses;
+
+  let modules = await getCurriculum(courseId);
+  let progressMap = await getProgressForCourse(courseId);
+  const allLessons = modules.flatMap((m) => m.lessons.map((l) => ({ ...l, moduleTitle: m.title })));
+
+  if (allLessons.length === 0) {
+    content.innerHTML = `
+      <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="/student/courses.html">&larr; My Courses</a></p>
+      <div class="card"><div class="state-block"><p>Your teacher hasn't added any lessons to <strong>${escapeHtml(course.name)}</strong> yet — check back soon.</p></div></div>
+    `;
+    throw new Error("no lessons");
+  }
+
+  let currentLessonId = getQueryParam("lesson") || allLessons[0].id;
+  if (!allLessons.find((l) => l.id === currentLessonId)) currentLessonId = allLessons[0].id;
+
+  let ytPlayer = null;
+  let ytInterval = null;
+
+  content.innerHTML = `
+    <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="/student/courses.html">&larr; My Courses</a></p>
+    <div class="card mb-4">
+      <div class="flex items-center justify-between mb-2" style="flex-wrap:wrap; gap:8px;">
+        <h2 style="margin:0;">${escapeHtml(course.name)}</h2>
+        <span id="progress-label" class="badge badge-info">0% complete</span>
+      </div>
+      <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill" style="width:0%;"></div></div>
+    </div>
+    <div class="learn-shell">
+      <aside class="learn-sidebar" id="learn-sidebar"></aside>
+      <div id="lesson-panel"></div>
+    </div>
+  `;
+
+  function updateProgressUI() {
+    const { percent } = computeCourseProgress(modules, progressMap);
+    document.getElementById("progress-label").textContent = `${percent}% complete`;
+    document.getElementById("progress-fill").style.width = `${percent}%`;
+  }
+
+  function tickIcon(lessonId) {
+    const status = progressMap[lessonId]?.status;
+    if (status === "completed") return `<span class="tick" style="color:var(--success);">✓</span>`;
+    if (status === "in_progress") return `<span class="tick" style="color:var(--gold-600);">●</span>`;
+    return `<span class="tick" style="color:var(--border-subtle);">○</span>`;
+  }
+
+  function renderSidebar() {
+    const sidebar = document.getElementById("learn-sidebar");
+    sidebar.innerHTML = modules.map((m) => `
+      <div class="module-title">${escapeHtml(m.title)}</div>
+      ${m.lessons.length === 0 ? `<p class="text-secondary" style="font-size:0.82rem; padding-left:10px;">No lessons</p>` : m.lessons.map((l) => `
+        <div class="lesson-link ${l.id === currentLessonId ? "active" : ""}" data-lesson-id="${l.id}">
+          ${tickIcon(l.id)}
+          <span>${escapeHtml(l.title)}</span>
+        </div>
+      `).join("")}
+    `).join("");
+
+    sidebar.querySelectorAll("[data-lesson-id]").forEach((el) => {
+      el.addEventListener("click", () => selectLesson(el.dataset.lessonId));
+    });
+  }
+
+  function cleanupPlayer() {
+    if (ytInterval) { clearInterval(ytInterval); ytInterval = null; }
+    if (ytPlayer && ytPlayer.destroy) { try { ytPlayer.destroy(); } catch (e) {} ytPlayer = null; }
+  }
+
+  async function selectLesson(lessonId) {
+    cleanupPlayer();
+    currentLessonId = lessonId;
+    const url = new URL(window.location);
+    url.searchParams.set("lesson", lessonId);
+    window.history.replaceState({}, "", url);
+    renderSidebar();
+    await renderLessonPanel();
+  }
+
+  function loadYouTubeApi() {
+    return new Promise((resolve) => {
+      if (window.YT && window.YT.Player) { resolve(); return; }
+      const existing = document.getElementById("yt-iframe-api");
+      if (!existing) {
+        const tag = document.createElement("script");
+        tag.id = "yt-iframe-api";
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+      }
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { if (prev) prev(); resolve(); };
+    });
+  }
+
+  async function setupVideoPlayer(lesson) {
+    const videoId = extractYouTubeId(lesson.video_url || "");
+    if (!videoId) {
+      document.getElementById("video-host").innerHTML = `<div class="alert alert-warning">This lesson's video link doesn't look like a valid YouTube URL.</div>`;
+      return;
+    }
+    await loadYouTubeApi();
+
+    let reportedCompletion = progressMap[lesson.id]?.status === "completed";
+
+    ytPlayer = new YT.Player("video-host", {
+      videoId,
+      playerVars: { rel: 0 },
+      events: {
+        onStateChange: (e) => {
+          if (e.data === YT.PlayerState.PLAYING) {
+            if (ytInterval) clearInterval(ytInterval);
+            ytInterval = setInterval(reportProgress, 5000);
+          } else if (e.data === YT.PlayerState.PAUSED) {
+            if (ytInterval) { clearInterval(ytInterval); ytInterval = null; }
+            reportProgress();
+          } else if (e.data === YT.PlayerState.ENDED) {
+            if (ytInterval) { clearInterval(ytInterval); ytInterval = null; }
+            const duration = ytPlayer.getDuration();
+            reportProgress(duration);
+          }
+        },
+      },
+    });
+
+    async function reportProgress(forceSeconds) {
+      try {
+        const current = forceSeconds ?? ytPlayer.getCurrentTime();
+        const duration = ytPlayer.getDuration();
+        await recordVideoProgress(lesson.id, current, duration);
+        const wasCompleted = progressMap[lesson.id]?.status === "completed";
+        progressMap[lesson.id] = {
+          ...(progressMap[lesson.id] || {}),
+          status: duration > 0 && current / duration >= 0.9 ? "completed" : "in_progress",
+        };
+        updateProgressUI();
+        renderSidebar();
+        if (!wasCompleted && progressMap[lesson.id].status === "completed" && !reportedCompletion) {
+          reportedCompletion = true;
+          showToast("Lesson completed! 🎉", "success");
+        }
+      } catch (err) {
+        // Quiet failure — next interval tick will retry.
+      }
+    }
+  }
+
+  async function renderLessonPanel() {
+    const lesson = allLessons.find((l) => l.id === currentLessonId);
+    const panel = document.getElementById("lesson-panel");
+    const idx = allLessons.findIndex((l) => l.id === currentLessonId);
+    const prevLesson = allLessons[idx - 1];
+    const nextLesson = allLessons[idx + 1];
+    const isCompleted = progressMap[lesson.id]?.status === "completed";
+
+    let bodyHtml = "";
+    if (lesson.lesson_type === "video") {
+      bodyHtml = `<div class="video-wrap"><div id="video-host"></div></div>`;
+    } else if (lesson.lesson_type === "text") {
+      bodyHtml = `<div class="lesson-content-text">${escapeHtml(lesson.content_text || "No content added yet.")}</div>`;
+    } else if (lesson.lesson_type === "pdf") {
+      bodyHtml = lesson.external_url
+        ? `<a class="btn btn-primary" href="${escapeHtml(lesson.external_url)}" target="_blank" rel="noopener">📎 Open PDF Material</a>`
+        : `<p class="text-secondary">No PDF has been attached to this lesson yet.</p>`;
+    } else if (lesson.lesson_type === "external") {
+      bodyHtml = lesson.external_url
+        ? `<a class="btn btn-primary" href="${escapeHtml(lesson.external_url)}" target="_blank" rel="noopener">🔗 Open External Resource</a>`
+        : `<p class="text-secondary">No link has been attached to this lesson yet.</p>`;
+    }
+
+    panel.innerHTML = `
+      <div class="card mb-4">
+        <div class="text-secondary" style="font-size:0.8rem;">${escapeHtml(lesson.moduleTitle)}</div>
+        <div class="flex items-center justify-between mb-2" style="flex-wrap:wrap; gap:8px;">
+          <h2 style="margin:0;">${escapeHtml(lesson.title)}</h2>
+          <div class="flex gap-2">
+            <button class="btn btn-outline btn-sm" id="bookmark-btn">☆ Bookmark</button>
+            ${lesson.lesson_type !== "video" ? `<button class="btn ${isCompleted ? "btn-success" : "btn-primary"} btn-sm" id="complete-btn" ${isCompleted ? "disabled" : ""}>${isCompleted ? "✓ Completed" : "Mark as Complete"}</button>` : isCompleted ? `<span class="badge badge-success">✓ Completed</span>` : ""}
+          </div>
+        </div>
+        ${bodyHtml}
+      </div>
+
+      <div class="card mb-4">
+        <h3>My Notes</h3>
+        <textarea class="input" id="notes-box" rows="4" placeholder="Jot down anything worth remembering about this lesson…"></textarea>
+        <button class="btn btn-outline btn-sm mt-2" id="save-note-btn">Save Note</button>
+      </div>
+
+      <div class="card mb-4">
+        <div class="flex items-center justify-between" style="flex-wrap:wrap; gap:8px;">
+          <span>Stuck on this lesson?</span>
+          <a class="btn btn-outline btn-sm" href="/student/questions.html?course=${courseId}&lesson=${lesson.id}">❔ Ask a Question</a>
+        </div>
+      </div>
+
+      <div class="flex justify-between">
+        ${prevLesson ? `<button class="btn btn-outline" id="prev-btn">&larr; ${escapeHtml(prevLesson.title)}</button>` : "<span></span>"}
+        ${nextLesson ? `<button class="btn btn-primary" id="next-btn">${escapeHtml(nextLesson.title)} &rarr;</button>` : "<span></span>"}
+      </div>
+    `;
+
+    if (lesson.lesson_type === "video") setupVideoPlayer(lesson);
+
+    document.getElementById("complete-btn")?.addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      setButtonLoading(btn, true, "Saving…");
+      try {
+        await markLessonComplete(lesson.id);
+        progressMap[lesson.id] = { ...(progressMap[lesson.id] || {}), status: "completed" };
+        updateProgressUI();
+        renderSidebar();
+        showToast("Lesson marked complete.", "success");
+        renderLessonPanel();
+      } catch (err) {
+        showToast(err.message || "Couldn't mark complete.", "error");
+        setButtonLoading(btn, false);
+      }
+    });
+
+    const bookmarkBtn = document.getElementById("bookmark-btn");
+    isBookmarked(lesson.id).then((yes) => {
+      bookmarkBtn.textContent = yes ? "★ Bookmarked" : "☆ Bookmark";
+    });
+    bookmarkBtn.addEventListener("click", async () => {
+      try {
+        const nowBookmarked = await toggleBookmark(lesson.id);
+        bookmarkBtn.textContent = nowBookmarked ? "★ Bookmarked" : "☆ Bookmark";
+        showToast(nowBookmarked ? "Bookmarked." : "Bookmark removed.", "info");
+      } catch (err) {
+        showToast("Couldn't update bookmark.", "error");
+      }
+    });
+
+    const notesBox = document.getElementById("notes-box");
+    getNote(lesson.id).then((note) => { notesBox.value = note?.content || ""; });
+    document.getElementById("save-note-btn").addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      setButtonLoading(btn, true, "Saving…");
+      try {
+        await saveNote(lesson.id, notesBox.value);
+        showToast("Note saved.", "success");
+      } catch (err) {
+        showToast("Couldn't save note.", "error");
+      }
+      setButtonLoading(btn, false);
+    });
+
+    document.getElementById("prev-btn")?.addEventListener("click", () => selectLesson(prevLesson.id));
+    document.getElementById("next-btn")?.addEventListener("click", () => selectLesson(nextLesson.id));
+  }
+
+  updateProgressUI();
+  renderSidebar();
+  renderLessonPanel();
+
+  window.addEventListener("beforeunload", cleanupPlayer);
+</script>
+</body>
+</html>

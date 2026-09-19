@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Courses | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getTeacherCourses } from "/js/courses.js";
+  import { escapeHtml } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["teacher"] });
+  const content = renderAppShell({ role: "teacher", profile, pageTitle: "My Courses", activeHref: "courses.html" });
+
+  content.innerHTML = `<div class="card"><div id="list"><div class="state-block"><div class="spinner"></div></div></div></div>`;
+
+  try {
+    const courses = await getTeacherCourses();
+    const list = document.getElementById("list");
+    if (courses.length === 0) {
+      list.innerHTML = `<div class="state-block"><p>No courses assigned to you yet. An admin will assign you a course from the Courses page.</p></div>`;
+    } else {
+      list.innerHTML = courses.map((c) => `
+        <div class="flex items-center justify-between" style="padding:14px 0; border-bottom:1px solid var(--border-subtle);">
+          <div>
+            <div style="font-weight:600; color:var(--navy-900);">${escapeHtml(c.name)}</div>
+            <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(c.category || "Uncategorized")}</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="badge ${c.status === "published" ? "badge-success" : "badge-neutral"}">${c.status}</span>
+            <a class="btn btn-outline btn-sm" href="/teacher/course-editor.html?id=${c.id}">Manage Content</a>
+          </div>
+        </div>
+      `).join("");
+    }
+  } catch (err) {
+    document.getElementById("list").innerHTML = `<div class="alert alert-danger">Couldn't load your courses.</div>`;
+  }
+</script>
+</body>
+</html>

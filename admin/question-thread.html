@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Question | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .reply-card { border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:14px; margin-bottom:12px; }
+  .reply-card.accepted { border-color:var(--success); background:var(--success-bg); }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getThread, getReplies, createReply, acceptReply, deleteThread, deleteReply } from "/js/community.js";
+  import { uploadFile, getSignedUrl, fileNameFromPath } from "/js/storage.js";
+  import { escapeHtml, formatDateTime, getQueryParam, showToast, setButtonLoading } from "/js/utils.js";
+
+  const threadId = getQueryParam("id");
+  if (!threadId) window.location.href = "/student/questions.html";
+
+  const { profile, user } = await requireAuth({ allowedRoles: ["student", "teacher", "admin", "super_admin"] });
+  const backHref = profile.role === "student" ? "/student/questions.html" : profile.role === "teacher" ? "/teacher/questions.html" : "/admin/questions.html";
+  const isModerator = ["admin", "super_admin", "teacher"].includes(profile.role);
+
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: "Question", activeHref: "questions.html" });
+  content.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+
+  let thread;
+  try {
+    thread = await getThread(threadId);
+  } catch (err) {
+    content.innerHTML = `<div class="card"><div class="state-block"><p>Question not found or you don't have access.</p><a href="${backHref}" class="btn btn-outline">Back</a></div></div>`;
+    throw err;
+  }
+
+  const attachmentUrl = thread.attachment_path ? await getSignedUrl("community-files", thread.attachment_path) : null;
+  const canModerateThread = thread.author_id === user.id || isModerator;
+
+  async function render() {
+    const replies = await getReplies(threadId);
+    content.innerHTML = `
+      <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="${backHref}">&larr; Q&A</a></p>
+
+      <div class="card mb-4">
+        <div class="flex items-center justify-between mb-2" style="flex-wrap:wrap; gap:8px;">
+          <h2 style="margin:0;">${escapeHtml(thread.title)}</h2>
+          ${thread.is_resolved ? '<span class="badge badge-success">Resolved</span>' : '<span class="badge badge-neutral">Open</span>'}
+        </div>
+        <div class="text-secondary" style="font-size:0.85rem; margin-bottom:8px;">
+          ${escapeHtml(thread.courses?.name || "")}${thread.lessons ? " · " + escapeHtml(thread.lessons.title) : ""} · Asked by ${escapeHtml(thread.profiles?.full_name || "Unknown")} · ${formatDateTime(thread.created_at)}
+        </div>
+        ${thread.body ? `<p style="white-space:pre-wrap;">${escapeHtml(thread.body)}</p>` : ""}
+        ${attachmentUrl ? `<a class="btn btn-outline btn-sm" href="${attachmentUrl}" target="_blank" rel="noopener">📎 ${escapeHtml(fileNameFromPath(thread.attachment_path))}</a>` : ""}
+        ${canModerateThread ? `<div class="mt-2"><button class="btn btn-danger btn-sm" id="delete-thread-btn">Delete Question</button></div>` : ""}
+      </div>
+
+      <h3>${replies.length} Repl${replies.length === 1 ? "y" : "ies"}</h3>
+      <div id="replies-list">
+        ${replies.map((r) => `
+          <div class="reply-card ${r.is_accepted ? "accepted" : ""}">
+            <div class="flex items-center justify-between mb-1">
+              <strong>${escapeHtml(r.profiles?.full_name || "Unknown")} ${r.profiles?.role !== "student" ? `<span class="badge badge-info">${r.profiles.role}</span>` : ""}</strong>
+              <span class="text-secondary" style="font-size:0.78rem;">${formatDateTime(r.created_at)}</span>
+            </div>
+            <p style="white-space:pre-wrap; margin:4px 0;">${escapeHtml(r.body)}</p>
+            <div class="flex gap-2">
+              ${r.is_accepted ? '<span class="badge badge-success">✓ Accepted Answer</span>' : ""}
+              ${!r.is_accepted && (thread.author_id === user.id || isModerator) ? `<button class="btn btn-outline btn-sm" data-action="accept" data-id="${r.id}">Mark as Accepted</button>` : ""}
+              ${(r.author_id === user.id || isModerator) ? `<button class="btn btn-ghost btn-sm" data-action="delete-reply" data-id="${r.id}">Delete</button>` : ""}
+            </div>
+          </div>
+        `).join("") || `<p class="text-secondary">No replies yet.</p>`}
+      </div>
+
+      <div class="card mt-4">
+        <h3>Post a Reply</h3>
+        <form id="reply-form">
+          <textarea class="input" id="replyBody" rows="3" required placeholder="Write your answer…"></textarea>
+          <input class="input mt-2" type="file" id="replyFile" />
+          <button type="submit" class="btn btn-primary mt-2" id="reply-btn">Post Reply</button>
+        </form>
+      </div>
+    `;
+
+    document.getElementById("delete-thread-btn")?.addEventListener("click", async () => {
+      if (!confirm("Delete this question and all its replies?")) return;
+      try { await deleteThread(threadId); window.location.href = backHref; } catch (err) { showToast(err.message, "error"); }
+    });
+
+    document.querySelectorAll('[data-action="accept"]').forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try { await acceptReply(btn.dataset.id); showToast("Marked as accepted.", "success"); render(); } catch (err) { showToast(err.message, "error"); }
+      });
+    });
+    document.querySelectorAll('[data-action="delete-reply"]').forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Delete this reply?")) return;
+        try { await deleteReply(btn.dataset.id); render(); } catch (err) { showToast(err.message, "error"); }
+      });
+    });
+
+    document.getElementById("reply-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("reply-btn");
+      setButtonLoading(btn, true, "Posting…");
+      try {
+        const fileInput = document.getElementById("replyFile");
+        let attachmentPath = null;
+        if (fileInput.files[0]) attachmentPath = await uploadFile("community-files", user.id, fileInput.files[0]);
+        await createReply({ threadId, body: document.getElementById("replyBody").value.trim(), attachmentPath });
+        render();
+      } catch (err) {
+        showToast(err.message || "Couldn't post reply.", "error");
+        setButtonLoading(btn, false);
+      }
+    });
+  }
+
+  render();
+</script>
+</body>
+</html>

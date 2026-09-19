@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Projects | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .proj-card { border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:16px; margin-bottom:16px; }
+  .proj-links a { margin-right:10px; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getMyEnrolledCourses } from "/js/courses.js";
+  import { getMyProjects, submitProject } from "/js/projects.js";
+  import { uploadFile, getSignedUrl, fileNameFromPath } from "/js/storage.js";
+  import { escapeHtml, formatDateTime, showToast, setButtonLoading } from "/js/utils.js";
+
+  const { profile, user } = await requireAuth({ allowedRoles: ["student"] });
+  const content = renderAppShell({ role: "student", profile, pageTitle: "Projects", activeHref: "projects.html" });
+
+  const enrolled = await getMyEnrolledCourses();
+
+  content.innerHTML = `
+    <div class="flex items-center justify-between mb-4" style="flex-wrap:wrap; gap:12px;">
+      <h2 style="margin:0;">My Projects</h2>
+      <button class="btn btn-primary" id="new-btn">+ Submit New Project</button>
+    </div>
+
+    <div class="card mb-4 hidden" id="new-card">
+      <h3>Submit a Project</h3>
+      <div id="submit-alert"></div>
+      <form id="submit-form">
+        <div class="field"><label for="courseId">Course</label><select class="input" id="courseId" required></select></div>
+        <div class="field"><label for="title">Project title</label><input class="input" id="title" required /></div>
+        <div class="field"><label for="description">Description</label><textarea class="input" id="description" rows="3"></textarea></div>
+        <div class="form-row-2">
+          <div class="field"><label for="githubUrl">GitHub link</label><input class="input" id="githubUrl" placeholder="https://github.com/…" /></div>
+          <div class="field"><label for="liveUrl">Live site link</label><input class="input" id="liveUrl" placeholder="https://…" /></div>
+        </div>
+        <div class="field"><label for="fileInput">Project file (optional, e.g. zip)</label><input class="input" type="file" id="fileInput" /></div>
+        <div class="field"><label for="screenshotsInput">Screenshots (optional, multiple)</label><input class="input" type="file" id="screenshotsInput" accept="image/*" multiple /></div>
+        <button type="submit" class="btn btn-primary" id="submit-btn">Submit Project</button>
+      </form>
+    </div>
+
+    <div id="list"><div class="state-block"><div class="spinner"></div></div></div>
+  `;
+
+  document.getElementById("courseId").innerHTML = enrolled.map((e) => `<option value="${e.courses.id}">${escapeHtml(e.courses.name)}</option>`).join("") || '<option value="">No enrolled courses</option>';
+
+  document.getElementById("new-btn").addEventListener("click", () => document.getElementById("new-card").classList.toggle("hidden"));
+
+  document.getElementById("submit-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById("submit-alert");
+    alertBox.innerHTML = "";
+    const btn = document.getElementById("submit-btn");
+    setButtonLoading(btn, true, "Submitting…");
+    try {
+      const fileInput = document.getElementById("fileInput");
+      const screenshotsInput = document.getElementById("screenshotsInput");
+
+      let filePath = null;
+      if (fileInput.files[0]) filePath = await uploadFile("project-files", user.id, fileInput.files[0]);
+
+      const screenshotPaths = [];
+      for (const file of screenshotsInput.files) {
+        screenshotPaths.push(await uploadFile("project-files", user.id, file));
+      }
+
+      await submitProject({
+        courseId: document.getElementById("courseId").value,
+        title: document.getElementById("title").value.trim(),
+        description: document.getElementById("description").value.trim(),
+        filePath,
+        githubUrl: document.getElementById("githubUrl").value.trim(),
+        liveUrl: document.getElementById("liveUrl").value.trim(),
+        screenshotPaths,
+      });
+      showToast("Project submitted.", "success");
+      document.getElementById("submit-form").reset();
+      document.getElementById("new-card").classList.add("hidden");
+      loadProjects();
+    } catch (err) {
+      alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message || "Couldn't submit project.")}</div>`;
+    }
+    setButtonLoading(btn, false);
+  });
+
+  async function loadProjects() {
+    const list = document.getElementById("list");
+    list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const projects = await getMyProjects();
+      if (projects.length === 0) {
+        list.innerHTML = `<div class="card"><div class="state-block"><p>You haven't submitted any projects yet.</p></div></div>`;
+        return;
+      }
+      const cards = await Promise.all(projects.map(renderProject));
+      list.innerHTML = "";
+      cards.forEach((c) => list.appendChild(c));
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-danger">Couldn't load your projects.</div>`;
+    }
+  }
+
+  async function renderProject(p) {
+    const card = document.createElement("div");
+    card.className = "proj-card";
+    const fileLink = p.file_path ? await getSignedUrl("project-files", p.file_path) : null;
+    card.innerHTML = `
+      <div class="flex items-center justify-between mb-2" style="flex-wrap:wrap; gap:8px;">
+        <strong>${escapeHtml(p.title)}</strong>
+        <span class="badge ${p.status === "graded" ? "badge-success" : "badge-warning"}">${p.status === "graded" ? `Graded: ${p.grade}/100` : "Awaiting review"}</span>
+      </div>
+      <div class="text-secondary" style="font-size:0.85rem; margin-bottom:8px;">${escapeHtml(p.courses?.name || "")} · Submitted ${formatDateTime(p.submitted_at)}</div>
+      ${p.description ? `<p>${escapeHtml(p.description)}</p>` : ""}
+      <div class="proj-links">
+        ${p.github_url ? `<a href="${escapeHtml(p.github_url)}" target="_blank" rel="noopener">💻 GitHub</a>` : ""}
+        ${p.live_url ? `<a href="${escapeHtml(p.live_url)}" target="_blank" rel="noopener">🌐 Live Site</a>` : ""}
+        ${fileLink ? `<a href="${fileLink}" target="_blank" rel="noopener">📎 ${escapeHtml(fileNameFromPath(p.file_path))}</a>` : ""}
+      </div>
+      ${p.feedback ? `<div class="alert alert-info mt-2"><strong>Feedback:</strong> ${escapeHtml(p.feedback)}</div>` : ""}
+    `;
+    return card;
+  }
+
+  loadProjects();
+</script>
+</body>
+</html>

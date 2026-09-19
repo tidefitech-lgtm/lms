@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Account Pending | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body style="background:var(--gradient-brand); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
+
+<div class="card" style="max-width:540px; width:100%; text-align:center;">
+  <img src="https://www.tidefitech.com/img/Capture-removebg-preview.png" alt="TIDEF ITECH" style="height:44px; margin:0 auto 20px;" />
+  <div id="status-content">
+    <div class="spinner" style="margin:0 auto 16px;"></div>
+    <p>Loading your account status…</p>
+  </div>
+  <button class="btn btn-ghost mt-4" id="logout-btn">Log out</button>
+</div>
+
+<script type="module">
+  import { onAuthReady, logout } from "/js/auth.js";
+  import { ROLE_HOME_PAGE } from "/js/config.js";
+  import { getSettings } from "/js/admin.js";
+
+  onAuthReady(async ({ user, profile }) => {
+    if (!user) { window.location.href = "/login.html"; return; }
+    if (!user.email_confirmed_at) {
+      window.location.href = `/verify-email.html?email=${encodeURIComponent(user.email)}`;
+      return;
+    }
+    if (!profile) return;
+
+    if (profile.role !== "student") {
+      window.location.href = ROLE_HOME_PAGE[profile.role] || "/login.html";
+      return;
+    }
+    if (profile.account_status === "approved") {
+      window.location.href = "/student/dashboard.html";
+      return;
+    }
+
+    const content = document.getElementById("status-content");
+
+    if (profile.account_status === "suspended") {
+      let supportPhone = "+234 902 777 2815";
+      try {
+        const settings = await getSettings();
+        if (settings.support_phone) supportPhone = settings.support_phone;
+      } catch { /* fall back to the default above */ }
+      content.innerHTML = `
+        <h1>Your account is suspended</h1>
+        <p>Please contact TIDEF ITECH admissions for help: <a href="tel:${supportPhone.replace(/\s+/g, "")}">${supportPhone}</a></p>`;
+      return;
+    }
+
+    const paymentStatus = profile.payment_status;
+    let paymentBlock = "";
+    let ctaButton = "";
+
+    if (paymentStatus === "not_submitted") {
+      paymentBlock = `
+        <div class="alert alert-info">You haven't told us you've paid yet. Once you've made your payment to TIDEF ITECH directly, let us know below.</div>`;
+      ctaButton = `<a href="/student/payment.html" class="btn btn-primary btn-block mt-4">I Have Completed Payment</a>`;
+    } else if (paymentStatus === "pending_verification") {
+      paymentBlock = `
+        <div class="alert alert-warning">Thanks — we've received your payment confirmation and it's waiting for an admin to verify it against our records. This usually doesn't take long.</div>`;
+      ctaButton = `<a href="/student/payment.html" class="btn btn-outline btn-block mt-4">View Submission Details</a>`;
+    } else if (paymentStatus === "rejected") {
+      paymentBlock = `
+        <div class="alert alert-danger">We couldn't verify your last payment confirmation. See the reason and submit a new confirmation once resolved.</div>`;
+      ctaButton = `<a href="/student/payment.html" class="btn btn-primary btn-block mt-4">Review & Resubmit</a>`;
+    }
+
+    content.innerHTML = `
+      <h1>Your account is being reviewed</h1>
+      <p>Hi ${profile.full_name?.split(" ")[0] || "there"}, your registration was received. Here's where things stand:</p>
+      ${paymentBlock}
+      ${ctaButton}
+      <p class="text-secondary mt-4">Once TIDEF ITECH confirms your payment, your course access will unlock automatically and you'll see it right here.</p>
+    `;
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await logout();
+    window.location.href = "/login.html";
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Activity Logs | TIDEF ITECH LMS Admin</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .log-row { display:flex; justify-content:space-between; gap:16px; padding:10px 0; border-bottom:1px solid var(--border-subtle); font-size:0.88rem; flex-wrap:wrap; }
+  .log-row:last-child { border-bottom:none; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getActivityLogs } from "/js/admin.js";
+  import { escapeHtml, formatDateTime } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: "Activity Logs", activeHref: "activity-logs.html" });
+
+  content.innerHTML = `
+    <p class="text-secondary mb-4">The most recent 100 admin actions — role changes, account suspensions/reactivations, and settings updates. Payment confirmations/rejections have their own detailed audit trail in Payment Verification.</p>
+    <div class="card"><div id="list"><div class="state-block"><div class="spinner"></div></div></div></div>
+  `;
+
+  const ACTION_LABELS = {
+    role_changed: "Changed role",
+    account_status_changed: "Changed account status",
+    setting_updated: "Updated setting",
+  };
+
+  try {
+    const logs = await getActivityLogs(100);
+    const list = document.getElementById("list");
+    if (logs.length === 0) {
+      list.innerHTML = `<div class="state-block"><p>No activity recorded yet.</p></div>`;
+    } else {
+      list.innerHTML = logs.map((l) => `
+        <div class="log-row">
+          <span><strong>${escapeHtml(l.actor_name || "Unknown")}</strong> ${escapeHtml(ACTION_LABELS[l.action] || l.action)}${l.details ? " — " + escapeHtml(JSON.stringify(l.details)) : ""}</span>
+          <span class="text-secondary">${formatDateTime(l.created_at)}</span>
+        </div>
+      `).join("");
+    }
+  } catch (err) {
+    document.getElementById("list").innerHTML = `<div class="alert alert-danger">Couldn't load activity logs.</div>`;
+  }
+</script>
+</body>
+</html>

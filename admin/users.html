@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Users & Roles | TIDEF ITECH LMS Admin</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .u-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+  .u-row:last-child { border-bottom:none; }
+  .filters { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+  .filters .input { max-width:220px; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getAllUsers, updateUserRole, setAccountStatus } from "/js/admin.js";
+  import { escapeHtml, formatDate, showToast, setButtonLoading } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
+  const isSuperAdmin = profile.role === "super_admin";
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: "Users & Roles", activeHref: "users.html" });
+
+  content.innerHTML = `
+    <div class="filters">
+      <input class="input" id="search" placeholder="Search name, email, or student ID…" />
+      <select class="input" id="roleFilter">
+        <option value="">All roles</option>
+        <option value="student">Students</option>
+        <option value="teacher">Teachers</option>
+        <option value="admin">Admins</option>
+        <option value="super_admin">Super Admins</option>
+      </select>
+    </div>
+    ${!isSuperAdmin ? '<div class="alert alert-info">You can suspend or reactivate accounts. Only a Super Admin can change someone\'s role.</div>' : ""}
+    <div class="card"><div id="list"><div class="state-block"><div class="spinner"></div></div></div></div>
+  `;
+
+  const searchInput = document.getElementById("search");
+  const roleFilter = document.getElementById("roleFilter");
+  let debounceTimer;
+  searchInput.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(loadList, 300);
+  });
+  roleFilter.addEventListener("change", loadList);
+
+  async function loadList() {
+    const list = document.getElementById("list");
+    list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const users = await getAllUsers({ role: roleFilter.value || null, search: searchInput.value.trim() || null });
+      if (users.length === 0) {
+        list.innerHTML = `<div class="state-block"><p>No matching users.</p></div>`;
+        return;
+      }
+      list.innerHTML = "";
+      users.forEach((u) => list.appendChild(renderRow(u)));
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-danger">Couldn't load users.</div>`;
+    }
+  }
+
+  function renderRow(u) {
+    const row = document.createElement("div");
+    row.className = "u-row";
+    const statusBadge = { approved: "badge-success", pending: "badge-warning", suspended: "badge-danger", rejected: "badge-neutral" }[u.account_status] || "badge-neutral";
+
+    row.innerHTML = `
+      <div>
+        <div style="font-weight:600; color:var(--navy-900);">${escapeHtml(u.full_name || "—")} ${u.student_id ? `<span class="text-secondary" style="font-weight:400;">(${escapeHtml(u.student_id)})</span>` : ""}</div>
+        <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(u.email || "")} · Joined ${formatDate(u.created_at)}</div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="badge ${statusBadge}">${u.account_status}</span>
+        <select class="input" style="max-width:140px;" data-role="role-select" ${isSuperAdmin ? "" : "disabled"}>
+          ${["student", "teacher", "admin", "super_admin"].map((r) => `<option value="${r}" ${r === u.role ? "selected" : ""}>${r.replace("_", " ")}</option>`).join("")}
+        </select>
+        ${u.account_status === "suspended"
+          ? `<button class="btn btn-success btn-sm" data-action="reactivate">Reactivate</button>`
+          : `<button class="btn btn-danger btn-sm" data-action="suspend">Suspend</button>`}
+      </div>
+    `;
+
+    const roleSelect = row.querySelector('[data-role="role-select"]');
+    if (isSuperAdmin) {
+      roleSelect.addEventListener("change", async () => {
+        if (!confirm(`Change ${u.full_name || "this user"}'s role to "${roleSelect.value.replace("_", " ")}"?`)) {
+          roleSelect.value = u.role;
+          return;
+        }
+        try {
+          await updateUserRole(u.id, roleSelect.value);
+          showToast("Role updated.", "success");
+        } catch (err) {
+          showToast(err.message || "Couldn't update role.", "error");
+          roleSelect.value = u.role;
+        }
+      });
+    }
+
+    row.querySelector('[data-action="suspend"]')?.addEventListener("click", async (e) => {
+      if (!confirm(`Suspend ${u.full_name || "this user"}? They won't be able to log in.`)) return;
+      setButtonLoading(e.currentTarget, true, "…");
+      try { await setAccountStatus(u.id, "suspended"); loadList(); } catch (err) { showToast(err.message, "error"); }
+    });
+    row.querySelector('[data-action="reactivate"]')?.addEventListener("click", async (e) => {
+      setButtonLoading(e.currentTarget, true, "…");
+      try { await setAccountStatus(u.id, "approved"); loadList(); } catch (err) { showToast(err.message, "error"); }
+    });
+
+    return row;
+  }
+
+  loadList();
+</script>
+</body>
+</html>

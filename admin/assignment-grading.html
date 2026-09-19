@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Grade Assignment | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .sub-card { border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:16px; margin-bottom:16px; }
+  .sub-head { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getAssignment, getAssignmentSubmissions, gradeSubmission } from "/js/assignments.js";
+  import { getSignedUrl, fileNameFromPath } from "/js/storage.js";
+  import { showToast, setButtonLoading, escapeHtml, formatDateTime, getQueryParam } from "/js/utils.js";
+
+  const assignmentId = getQueryParam("id");
+  if (!assignmentId) window.location.href = "/teacher/assignments.html";
+
+  const { profile } = await requireAuth({ allowedRoles: ["teacher", "admin", "super_admin"] });
+  const isStaff = profile.role !== "teacher";
+  const backHref = isStaff ? "/admin/assignments.html" : "/teacher/assignments.html";
+
+  let assignment;
+  try {
+    assignment = await getAssignment(assignmentId);
+  } catch (err) {
+    document.body.innerHTML = `<div class="state-block"><p>Assignment not found.</p><a href="${backHref}" class="btn btn-outline">Back</a></div>`;
+    throw err;
+  }
+
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: assignment.title, activeHref: "assignments.html" });
+
+  content.innerHTML = `
+    <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="${backHref}">&larr; Assignments</a></p>
+    <div class="card mb-4">
+      <h2 style="margin-bottom:4px;">${escapeHtml(assignment.title)}</h2>
+      <p class="text-secondary" style="margin:0;">${escapeHtml(assignment.courses?.name || "")} · Max marks: ${assignment.max_marks}${assignment.due_at ? " · Due " + formatDateTime(assignment.due_at) : ""}</p>
+      ${assignment.instructions ? `<p class="mt-2">${escapeHtml(assignment.instructions)}</p>` : ""}
+    </div>
+    <h3>Submissions</h3>
+    <div id="submissions-list"><div class="state-block"><div class="spinner"></div></div></div>
+  `;
+
+  async function loadSubmissions() {
+    const list = document.getElementById("submissions-list");
+    list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const submissions = await getAssignmentSubmissions(assignmentId);
+      if (submissions.length === 0) {
+        list.innerHTML = `<div class="card"><div class="state-block"><p>No submissions yet.</p></div></div>`;
+        return;
+      }
+      list.innerHTML = "";
+      for (const s of submissions) list.appendChild(await renderSubmission(s));
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-danger">Couldn't load submissions.</div>`;
+    }
+  }
+
+  async function renderSubmission(s) {
+    const card = document.createElement("div");
+    card.className = "sub-card";
+    const fileLink = s.file_path ? await getSignedUrl("submission-files", s.file_path) : null;
+
+    card.innerHTML = `
+      <div class="sub-head">
+        <div>
+          <strong>${escapeHtml(s.profiles?.full_name || "Unknown")}</strong>
+          <span class="text-secondary"> (${escapeHtml(s.profiles?.student_id || "—")})</span>
+        </div>
+        <span class="badge ${s.status === "graded" ? "badge-success" : "badge-warning"}">${s.status}</span>
+      </div>
+      <p class="text-secondary" style="font-size:0.85rem;">Submitted ${formatDateTime(s.submitted_at)} · Attempt ${s.attempt_number}</p>
+      ${s.content_text ? `<div class="mb-2" style="white-space:pre-wrap;">${escapeHtml(s.content_text)}</div>` : ""}
+      ${fileLink ? `<a class="btn btn-outline btn-sm mb-2" href="${fileLink}" target="_blank" rel="noopener">📎 ${escapeHtml(fileNameFromPath(s.file_path))}</a>` : ""}
+      <form data-role="grade-form" class="mt-2">
+        <div class="form-row-2">
+          <div class="field"><label>Grade (out of ${assignment.max_marks})</label><input class="input" type="number" min="0" max="${assignment.max_marks}" step="0.5" data-role="grade-input" value="${s.grade ?? ""}" required /></div>
+          <div class="field"><label>Feedback</label><input class="input" data-role="feedback-input" value="${escapeHtml(s.feedback || "")}" /></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">${s.status === "graded" ? "Update Grade" : "Submit Grade"}</button>
+      </form>
+    `;
+
+    card.querySelector('[data-role="grade-form"]').addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = e.currentTarget.querySelector("button");
+      setButtonLoading(btn, true, "Saving…");
+      try {
+        await gradeSubmission(
+          s.id,
+          Number(card.querySelector('[data-role="grade-input"]').value),
+          card.querySelector('[data-role="feedback-input"]').value.trim()
+        );
+        showToast("Grade saved.", "success");
+        loadSubmissions();
+      } catch (err) {
+        showToast(err.message || "Couldn't save grade.", "error");
+        setButtonLoading(btn, false);
+      }
+    });
+
+    return card;
+  }
+
+  loadSubmissions();
+</script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manage Course | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .tabs { display:flex; gap:8px; border-bottom:1px solid var(--border-subtle); margin-bottom:20px; }
+  .tab-btn { background:none; border:none; padding:10px 4px; margin-right:20px; font-weight:600; color:var(--text-secondary); cursor:pointer; border-bottom:2px solid transparent; }
+  .tab-btn.active { color:var(--navy-900); border-bottom-color:var(--gold-500); }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+  .module-block { border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px; margin-bottom:16px; }
+  .lesson-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-top:1px solid var(--border-subtle); gap:12px; }
+  .lesson-row:first-of-type { border-top:none; }
+  .roster-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border-subtle); gap:12px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import {
+    getCourse, updateCourse, getCurriculum,
+    createModule, deleteModule, createLesson, updateLesson, deleteLesson,
+    getCourseEnrollments,
+  } from "/js/courses.js";
+  import { showToast, setButtonLoading, escapeHtml, formatDate, getQueryParam } from "/js/utils.js";
+
+  const courseId = getQueryParam("id");
+  if (!courseId) window.location.href = "/teacher/courses.html";
+
+  const { profile } = await requireAuth({ allowedRoles: ["teacher"] });
+
+  let course;
+  try {
+    course = await getCourse(courseId);
+    if (course.teacher_id !== profile.id) throw new Error("not your course");
+  } catch (err) {
+    document.body.innerHTML = `<div class="state-block"><p>You don't have access to this course.</p><a href="/teacher/courses.html" class="btn btn-outline">Back</a></div>`;
+    throw err;
+  }
+
+  const content = renderAppShell({ role: "teacher", profile, pageTitle: course.name, activeHref: "courses.html" });
+
+  content.innerHTML = `
+    <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="/teacher/courses.html">&larr; My Courses</a></p>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="details">Description</button>
+      <button class="tab-btn" data-tab="curriculum">Curriculum</button>
+      <button class="tab-btn" data-tab="roster">Students</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-details">
+      <div class="card">
+        <p class="text-secondary">Course name, category and status are managed by an admin. You can update the description.</p>
+        <div id="details-alert"></div>
+        <div class="field"><label>Course name</label><p><strong>${escapeHtml(course.name)}</strong></p></div>
+        <form id="details-form">
+          <div class="field"><label for="description">Description</label><textarea class="input" id="description" rows="5">${escapeHtml(course.description || "")}</textarea></div>
+          <button type="submit" class="btn btn-primary" id="save-details-btn">Save Description</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-curriculum">
+      <div class="card mb-4">
+        <div class="flex gap-3">
+          <input class="input" id="new-module-title" placeholder="New module title" />
+          <button class="btn btn-primary" id="add-module-btn">Add Module</button>
+        </div>
+      </div>
+      <div id="curriculum-list"><div class="state-block"><div class="spinner"></div></div></div>
+    </div>
+
+    <div class="tab-panel" id="tab-roster">
+      <div class="card">
+        <h3>Enrolled Students</h3>
+        <div id="roster-list"><div class="state-block"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  `;
+
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+      if (btn.dataset.tab === "roster") loadRoster();
+    });
+  });
+
+  document.getElementById("details-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById("details-alert");
+    alertBox.innerHTML = "";
+    const btn = document.getElementById("save-details-btn");
+    setButtonLoading(btn, true, "Saving…");
+    try {
+      await updateCourse(courseId, { description: document.getElementById("description").value.trim() || null });
+      showToast("Description saved.", "success");
+    } catch (err) {
+      alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message)}</div>`;
+    }
+    setButtonLoading(btn, false);
+  });
+
+  document.getElementById("add-module-btn").addEventListener("click", async () => {
+    const input = document.getElementById("new-module-title");
+    const title = input.value.trim();
+    if (!title) return;
+    try {
+      const existing = await getCurriculum(courseId);
+      await createModule(courseId, title, existing.length);
+      input.value = "";
+      loadCurriculum();
+    } catch (err) {
+      showToast(err.message || "Couldn't add module.", "error");
+    }
+  });
+
+  async function loadCurriculum() {
+    const list = document.getElementById("curriculum-list");
+    list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const modules = await getCurriculum(courseId);
+      if (modules.length === 0) {
+        list.innerHTML = `<div class="card"><div class="state-block"><p>No modules yet. Add one above.</p></div></div>`;
+        return;
+      }
+      list.innerHTML = "";
+      modules.forEach((m) => list.appendChild(renderModule(m)));
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-danger">Couldn't load curriculum.</div>`;
+    }
+  }
+
+  function renderModule(m) {
+    const block = document.createElement("div");
+    block.className = "module-block";
+    block.innerHTML = `
+      <div class="flex items-center justify-between mb-2">
+        <strong>${escapeHtml(m.title)}</strong>
+        <button class="btn btn-danger btn-sm" data-action="delete-module">Delete Module</button>
+      </div>
+      <div data-role="lessons">
+        ${m.lessons.length === 0 ? `<p class="text-secondary" style="margin:8px 0;">No lessons yet.</p>` : m.lessons.map(lessonRowHtml).join("")}
+      </div>
+      <form data-role="add-lesson-form" style="border-top:1px solid var(--border-subtle); margin-top:12px; padding-top:12px;">
+        <div class="form-row-2">
+          <input class="input" placeholder="Lesson title" data-role="lesson-title" required />
+          <select class="input" data-role="lesson-type">
+            <option value="text">Text</option>
+            <option value="video">Video (YouTube)</option>
+            <option value="pdf">PDF</option>
+            <option value="external">External Link</option>
+          </select>
+        </div>
+        <div class="field" data-role="field-video">
+          <label>YouTube URL</label>
+          <input class="input" data-role="lesson-video-url" placeholder="https://www.youtube.com/watch?v=…" />
+        </div>
+        <div class="field hidden" data-role="field-text">
+          <label>Lesson content</label>
+          <textarea class="input" data-role="lesson-content-text" rows="3"></textarea>
+        </div>
+        <div class="field hidden" data-role="field-external">
+          <label>Link</label>
+          <input class="input" data-role="lesson-external-url" placeholder="https://…" />
+        </div>
+        <button type="submit" class="btn btn-outline btn-sm">+ Add Lesson</button>
+      </form>
+    `;
+
+    block.querySelector('[data-action="delete-module"]').addEventListener("click", async () => {
+      if (!confirm(`Delete "${m.title}" and all its lessons?`)) return;
+      try { await deleteModule(m.id); loadCurriculum(); } catch (err) { showToast(err.message, "error"); }
+    });
+
+    wireLessonRowActions(block);
+
+    const typeSelect = block.querySelector('[data-role="lesson-type"]');
+    const fieldVideo = block.querySelector('[data-role="field-video"]');
+    const fieldText = block.querySelector('[data-role="field-text"]');
+    const fieldExternal = block.querySelector('[data-role="field-external"]');
+    typeSelect.addEventListener("change", () => {
+      fieldVideo.classList.toggle("hidden", typeSelect.value !== "video");
+      fieldText.classList.toggle("hidden", typeSelect.value !== "text");
+      fieldExternal.classList.toggle("hidden", !["pdf", "external"].includes(typeSelect.value));
+    });
+
+    block.querySelector('[data-role="add-lesson-form"]').addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = block.querySelector('[data-role="lesson-title"]').value.trim();
+      if (!title) return;
+      const type = typeSelect.value;
+      try {
+        await createLesson(m.id, {
+          title,
+          lesson_type: type,
+          video_url: type === "video" ? block.querySelector('[data-role="lesson-video-url"]').value.trim() || null : null,
+          content_text: type === "text" ? block.querySelector('[data-role="lesson-content-text"]').value.trim() || null : null,
+          external_url: ["pdf", "external"].includes(type) ? block.querySelector('[data-role="lesson-external-url"]').value.trim() || null : null,
+        }, m.lessons.length);
+        loadCurriculum();
+      } catch (err) {
+        showToast(err.message || "Couldn't add lesson.", "error");
+      }
+    });
+
+    return block;
+  }
+
+  function wireLessonRowActions(block) {
+    block.querySelectorAll('[data-action="delete-lesson"]').forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Delete this lesson?")) return;
+        try { await deleteLesson(btn.dataset.id); loadCurriculum(); } catch (err) { showToast(err.message, "error"); }
+      });
+    });
+    block.querySelectorAll('[data-action="edit-lesson"]').forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const row = btn.closest("[data-lesson-row]");
+        row.querySelector('[data-role="edit-lesson-form"]').classList.toggle("hidden");
+      });
+    });
+    block.querySelectorAll('[data-role="edit-lesson-form"]').forEach((form) => {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const lessonId = form.dataset.id;
+        const type = form.dataset.type;
+        const patch = { title: form.querySelector('[data-role="edit-title"]').value.trim() };
+        if (type === "video") patch.video_url = form.querySelector('[data-role="edit-value"]').value.trim() || null;
+        if (type === "text") patch.content_text = form.querySelector('[data-role="edit-value"]').value.trim() || null;
+        if (["pdf", "external"].includes(type)) patch.external_url = form.querySelector('[data-role="edit-value"]').value.trim() || null;
+        try {
+          await updateLesson(lessonId, patch);
+          showToast("Lesson updated.", "success");
+          loadCurriculum();
+        } catch (err) {
+          showToast(err.message || "Couldn't update lesson.", "error");
+        }
+      });
+    });
+  }
+
+  function lessonRowHtml(l) {
+    const typeIcon = { video: "🎬", text: "📄", pdf: "📎", external: "🔗" }[l.lesson_type] || "📄";
+    const currentValue = l.lesson_type === "video" ? (l.video_url || "") : l.lesson_type === "text" ? (l.content_text || "") : (l.external_url || "");
+    const isLongField = l.lesson_type === "text";
+    return `
+      <div data-lesson-row>
+        <div class="lesson-row">
+          <span>${typeIcon} ${escapeHtml(l.title)}</span>
+          <div class="flex gap-2">
+            <button class="btn btn-ghost btn-sm" data-action="edit-lesson">Edit</button>
+            <button class="btn btn-ghost btn-sm" data-action="delete-lesson" data-id="${l.id}">Remove</button>
+          </div>
+        </div>
+        <form data-role="edit-lesson-form" class="hidden" data-id="${l.id}" data-type="${l.lesson_type}" style="background:var(--off-white); border-radius:var(--radius-md); padding:12px; margin:6px 0 10px;">
+          <div class="field"><label>Title</label><input class="input" data-role="edit-title" value="${escapeHtml(l.title)}" /></div>
+          <div class="field">
+            <label>${l.lesson_type === "video" ? "YouTube URL" : l.lesson_type === "text" ? "Content" : "Link"}</label>
+            ${isLongField
+              ? `<textarea class="input" data-role="edit-value" rows="3">${escapeHtml(currentValue)}</textarea>`
+              : `<input class="input" data-role="edit-value" value="${escapeHtml(currentValue)}" />`}
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
+        </form>
+      </div>
+    `;
+  }
+
+  async function loadRoster() {
+    const rosterList = document.getElementById("roster-list");
+    rosterList.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const roster = await getCourseEnrollments(courseId);
+      rosterList.innerHTML = roster.length === 0
+        ? `<div class="state-block"><p>No students enrolled yet.</p></div>`
+        : roster.map((r) => `
+          <div class="roster-row">
+            <span>${escapeHtml(r.profiles?.full_name || "Unknown")} <span class="text-secondary">(${escapeHtml(r.profiles?.student_id || "—")})</span></span>
+            <span class="badge badge-info">${r.status}</span>
+            <span class="text-secondary">Enrolled ${formatDate(r.enrolled_at)}</span>
+          </div>
+        `).join("");
+    } catch (err) {
+      rosterList.innerHTML = `<div class="alert alert-danger">Couldn't load roster.</div>`;
+    }
+  }
+
+  loadCurriculum();
+</script>
+</body>
+</html>

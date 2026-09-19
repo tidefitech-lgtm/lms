@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reports | TIDEF ITECH LMS Admin</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .bar-row { margin-bottom:14px; }
+  .bar-label { display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px; }
+  .bar-track { background:var(--off-white); border-radius:var(--radius-pill); height:10px; overflow:hidden; }
+  .bar-fill { background:var(--gradient-gold); height:100%; border-radius:var(--radius-pill); }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getReportStats } from "/js/admin.js";
+  import { escapeHtml } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: "Reports", activeHref: "reports.html" });
+
+  content.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+
+  try {
+    const stats = await getReportStats();
+
+    const enrollEntries = Object.entries(stats.enrollByCourse);
+    const maxEnroll = Math.max(1, ...enrollEntries.map(([, v]) => v.total));
+
+    content.innerHTML = `
+      <div class="stat-grid mb-4">
+        <div class="stat-card"><div class="stat-value">${stats.totalStudents}</div><div class="stat-label">Total Students (${stats.approvedStudents} approved)</div></div>
+        <div class="stat-card"><div class="stat-value">${stats.totalCourses}</div><div class="stat-label">Courses (${stats.publishedCourses} published)</div></div>
+        <div class="stat-card"><div class="stat-value">${stats.totalCertificates}</div><div class="stat-label">Certificates Issued</div></div>
+        <div class="stat-card"><div class="stat-value">${stats.passRate === null ? "—" : stats.passRate + "%"}</div><div class="stat-label">Quiz/Exam Pass Rate (${stats.totalAttempts} attempts)</div></div>
+      </div>
+
+      <div class="card mb-4">
+        <h3>Enrollment & Completion by Course</h3>
+        ${enrollEntries.length === 0 ? '<p class="text-secondary">No enrollments yet.</p>' : enrollEntries.map(([name, v]) => `
+          <div class="bar-row">
+            <div class="bar-label"><span>${escapeHtml(name)}</span><span class="text-secondary">${v.completed}/${v.total} completed</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${(v.total / maxEnroll) * 100}%;"></div></div>
+          </div>
+        `).join("")}
+      </div>
+
+      <div class="card">
+        <h3>Grading Throughput</h3>
+        <p class="text-secondary">${stats.totalSubmissions === 0
+          ? "No assignment submissions yet."
+          : `${stats.submissionGradeRate}% of ${stats.totalSubmissions} assignment submission(s) have been graded.`}
+        </p>
+        ${stats.totalSubmissions > 0 ? `
+          <div class="bar-track"><div class="bar-fill" style="width:${stats.submissionGradeRate}%;"></div></div>
+        ` : ""}
+      </div>
+    `;
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-danger">Couldn't load reports.</div>`;
+  }
+</script>
+</body>
+</html>

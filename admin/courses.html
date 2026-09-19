@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Courses | TIDEF ITECH LMS Admin</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .course-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+  .course-row:last-child { border-bottom:none; }
+  .course-title { font-weight:600; color:var(--navy-900); }
+  .course-meta { color:var(--text-secondary); font-size:0.85rem; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getAllCourses, createCourse, setCourseStatus, getTeachers } from "/js/courses.js";
+  import { showToast, setButtonLoading, escapeHtml } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: "Courses", activeHref: "courses.html" });
+
+  content.innerHTML = `
+    <div class="flex items-center justify-between mb-4" style="flex-wrap:wrap; gap:12px;">
+      <h2 style="margin:0;">All Courses</h2>
+      <button class="btn btn-primary" id="new-course-btn">+ New Course</button>
+    </div>
+
+    <div class="card mb-4 hidden" id="new-course-card">
+      <h3>Create Course</h3>
+      <div id="create-alert"></div>
+      <form id="create-form">
+        <div class="form-row-2">
+          <div class="field">
+            <label for="name">Course name</label>
+            <input class="input" id="name" required />
+          </div>
+          <div class="field">
+            <label for="category">Category</label>
+            <input class="input" id="category" placeholder="e.g. Web Development" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="description">Description</label>
+          <textarea class="input" id="description" rows="3"></textarea>
+        </div>
+        <div class="form-row-2">
+          <div class="field">
+            <label for="duration">Duration</label>
+            <input class="input" id="duration" placeholder="e.g. 12 weeks" />
+          </div>
+          <div class="field">
+            <label for="level">Level</label>
+            <select class="input" id="level">
+              <option value="">Select…</option>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="teacherId">Assign teacher <span class="text-secondary">(optional, can set later)</span></label>
+          <select class="input" id="teacherId"><option value="">Loading teachers…</option></select>
+        </div>
+        <div class="flex gap-3">
+          <button type="submit" class="btn btn-primary" id="create-btn">Create Course</button>
+          <button type="button" class="btn btn-ghost" id="cancel-create-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div id="course-list"><div class="state-block"><div class="spinner"></div></div></div>
+    </div>
+  `;
+
+  document.getElementById("new-course-btn").addEventListener("click", () => {
+    document.getElementById("new-course-card").classList.toggle("hidden");
+    loadTeacherOptions();
+  });
+  document.getElementById("cancel-create-btn").addEventListener("click", () => {
+    document.getElementById("new-course-card").classList.add("hidden");
+  });
+
+  async function loadTeacherOptions() {
+    const select = document.getElementById("teacherId");
+    if (select.dataset.loaded) return;
+    try {
+      const teachers = await getTeachers();
+      select.innerHTML = '<option value="">No teacher yet</option>' +
+        teachers.map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join("");
+      select.dataset.loaded = "1";
+    } catch (err) {
+      select.innerHTML = '<option value="">Couldn\'t load teachers</option>';
+    }
+  }
+
+  document.getElementById("create-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById("create-alert");
+    alertBox.innerHTML = "";
+    const btn = document.getElementById("create-btn");
+    setButtonLoading(btn, true, "Creating…");
+    try {
+      await createCourse({
+        name: document.getElementById("name").value.trim(),
+        category: document.getElementById("category").value.trim() || null,
+        description: document.getElementById("description").value.trim() || null,
+        duration: document.getElementById("duration").value.trim() || null,
+        level: document.getElementById("level").value || null,
+        teacher_id: document.getElementById("teacherId").value || null,
+        status: "draft",
+      });
+      showToast("Course created as a draft.", "success");
+      document.getElementById("create-form").reset();
+      document.getElementById("new-course-card").classList.add("hidden");
+      loadCourses();
+    } catch (err) {
+      alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message || "Couldn't create course.")}</div>`;
+    }
+    setButtonLoading(btn, false);
+  });
+
+  async function loadCourses() {
+    const list = document.getElementById("course-list");
+    list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const courses = await getAllCourses();
+      if (courses.length === 0) {
+        list.innerHTML = `<div class="state-block"><p>No courses yet. Create your first one above.</p></div>`;
+        return;
+      }
+      list.innerHTML = "";
+      courses.forEach((c) => list.appendChild(renderRow(c)));
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-danger">Couldn't load courses.</div>`;
+    }
+  }
+
+  function renderRow(c) {
+    const row = document.createElement("div");
+    row.className = "course-row";
+    const statusBadge = { draft: "badge-neutral", published: "badge-success", archived: "badge-warning" }[c.status] || "badge-neutral";
+    row.innerHTML = `
+      <div>
+        <div class="course-title">${escapeHtml(c.name)}</div>
+        <div class="course-meta">${escapeHtml(c.category || "Uncategorized")} · ${escapeHtml(c.teacher?.full_name || "No teacher assigned")}</div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="badge ${statusBadge}">${c.status}</span>
+        <a class="btn btn-outline btn-sm" href="/admin/course-editor.html?id=${c.id}">Manage</a>
+        ${c.status !== "published"
+          ? `<button class="btn btn-success btn-sm" data-action="publish">Publish</button>`
+          : `<button class="btn btn-ghost btn-sm" data-action="unpublish">Unpublish</button>`}
+        ${c.status !== "archived"
+          ? `<button class="btn btn-danger btn-sm" data-action="archive">Archive</button>`
+          : ""}
+      </div>
+    `;
+
+    row.querySelector('[data-action="publish"]')?.addEventListener("click", async (e) => {
+      setButtonLoading(e.currentTarget, true, "…");
+      try { await setCourseStatus(c.id, "published"); loadCourses(); } catch (err) { showToast(err.message, "error"); }
+    });
+    row.querySelector('[data-action="unpublish"]')?.addEventListener("click", async (e) => {
+      setButtonLoading(e.currentTarget, true, "…");
+      try { await setCourseStatus(c.id, "draft"); loadCourses(); } catch (err) { showToast(err.message, "error"); }
+    });
+    row.querySelector('[data-action="archive"]')?.addEventListener("click", async (e) => {
+      if (!confirm(`Archive "${c.name}"? Students already enrolled keep access; it just disappears from public listings.`)) return;
+      setButtonLoading(e.currentTarget, true, "…");
+      try { await setCourseStatus(c.id, "archived"); loadCourses(); } catch (err) { showToast(err.message, "error"); }
+    });
+
+    return row;
+  }
+
+  loadCourses();
+</script>
+</body>
+</html>

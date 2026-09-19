@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quizzes | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .a-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+  .a-row:last-child { border-bottom:none; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getMyEnrolledCourses } from "/js/courses.js";
+  import { getAssessmentsForCourses, getMyAttempts } from "/js/assessments.js";
+  import { escapeHtml } from "/js/utils.js";
+
+  const KIND = "quiz";
+  const { profile } = await requireAuth({ allowedRoles: ["student"] });
+  const content = renderAppShell({ role: "student", profile, pageTitle: "Quizzes", activeHref: "quizzes.html" });
+
+  content.innerHTML = `<div class="card"><div id="list"><div class="state-block"><div class="spinner"></div></div></div></div>`;
+
+  try {
+    const enrollments = await getMyEnrolledCourses();
+    const items = await getAssessmentsForCourses(enrollments.map((e) => e.courses.id), KIND);
+    const list = document.getElementById("list");
+
+    if (items.length === 0) {
+      list.innerHTML = `<div class="state-block"><p>No quizzes yet.</p></div>`;
+    } else {
+      const rows = await Promise.all(items.map(async (a) => {
+        const attempts = await getMyAttempts(a.id);
+        const finished = attempts.filter((x) => x.status !== "in_progress");
+        const best = finished.reduce((max, x) => (x.percentage > (max?.percentage ?? -1) ? x : max), null);
+        const inProgress = attempts.find((x) => x.status === "in_progress");
+
+        let statusBadge = `<span class="badge badge-neutral">Not started</span>`;
+        if (best) statusBadge = `<span class="badge ${best.passed ? "badge-success" : "badge-danger"}">${best.percentage}% ${best.passed ? "· Passed" : "· Failed"}</span>`;
+        if (inProgress) statusBadge = `<span class="badge badge-warning">In progress</span>`;
+
+        const canAttemptMore = finished.length < a.max_attempts || inProgress;
+        const action = inProgress
+          ? `<a class="btn btn-primary btn-sm" href="/student/quiz-attempt.html?id=${a.id}">Resume</a>`
+          : canAttemptMore
+          ? `<a class="btn btn-primary btn-sm" href="/student/quiz-attempt.html?id=${a.id}">${finished.length > 0 ? "Retake" : "Start"}</a>`
+          : `<a class="btn btn-outline btn-sm" href="/student/quiz-results.html?attempt=${best?.id || ""}">View Result</a>`;
+
+        return `
+          <div class="a-row">
+            <div>
+              <div style="font-weight:600; color:var(--navy-900);">${escapeHtml(a.title)}</div>
+              <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(a.courses?.name || "")} · ${a.time_limit_minutes ? a.time_limit_minutes + " min" : "No time limit"} · ${finished.length}/${a.max_attempts} attempt(s) used</div>
+            </div>
+            <div class="flex items-center gap-3">${statusBadge}${action}</div>
+          </div>
+        `;
+      }));
+      list.innerHTML = rows.join("");
+    }
+  } catch (err) {
+    document.getElementById("list").innerHTML = `<div class="alert alert-danger">Couldn't load quizzes.</div>`;
+  }
+</script>
+</body>
+</html>

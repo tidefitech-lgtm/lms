@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Assignments | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .a-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+  .a-row:last-child { border-bottom:none; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getMyEnrolledCourses } from "/js/courses.js";
+  import { getAssignmentsForCourses, getMySubmission } from "/js/assignments.js";
+  import { escapeHtml, formatDateTime } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["student"] });
+  const content = renderAppShell({ role: "student", profile, pageTitle: "Assignments", activeHref: "assignments.html" });
+
+  content.innerHTML = `<div class="card"><div id="list"><div class="state-block"><div class="spinner"></div></div></div></div>`;
+
+  try {
+    const enrollments = await getMyEnrolledCourses();
+    const assignments = await getAssignmentsForCourses(enrollments.map((e) => e.courses.id));
+    const list = document.getElementById("list");
+
+    if (assignments.length === 0) {
+      list.innerHTML = `<div class="state-block"><p>No assignments yet.</p></div>`;
+    } else {
+      const rows = await Promise.all(assignments.map(async (a) => {
+        const mine = await getMySubmission(a.id);
+        let statusBadge = `<span class="badge badge-neutral">Not submitted</span>`;
+        if (mine?.status === "graded") statusBadge = `<span class="badge badge-success">Graded: ${mine.grade}/${a.max_marks}</span>`;
+        else if (mine) statusBadge = `<span class="badge badge-info">Submitted</span>`;
+
+        const overdue = a.due_at && new Date(a.due_at) < new Date() && !mine;
+        return `
+          <div class="a-row">
+            <div>
+              <div style="font-weight:600; color:var(--navy-900);">${escapeHtml(a.title)}</div>
+              <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(a.courses?.name || "")} ${a.due_at ? `· Due ${formatDateTime(a.due_at)}` : ""} ${overdue ? '<span style="color:var(--danger);">· Overdue</span>' : ""}</div>
+            </div>
+            <div class="flex items-center gap-3">
+              ${statusBadge}
+              <a class="btn btn-outline btn-sm" href="/student/assignment.html?id=${a.id}">Open</a>
+            </div>
+          </div>
+        `;
+      }));
+      list.innerHTML = rows.join("");
+    }
+  } catch (err) {
+    document.getElementById("list").innerHTML = `<div class="alert alert-danger">Couldn't load assignments.</div>`;
+  }
+</script>
+</body>
+</html>

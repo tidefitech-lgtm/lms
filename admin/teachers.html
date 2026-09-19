@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Teachers | TIDEF ITECH LMS Admin</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .t-row { padding:16px 0; border-bottom:1px solid var(--border-subtle); }
+  .t-row:last-child { border-bottom:none; }
+  .t-courses { margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getTeachersWithCourses } from "/js/admin.js";
+  import { escapeHtml, formatDate } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: "Teachers", activeHref: "teachers.html" });
+
+  content.innerHTML = `
+    <div class="alert alert-info mb-4">To make someone a teacher, go to <a href="/admin/users.html">Users & Roles</a> and change their role (Super Admin only).</div>
+    <div class="card"><div id="list"><div class="state-block"><div class="spinner"></div></div></div></div>
+  `;
+
+  try {
+    const teachers = await getTeachersWithCourses();
+    const list = document.getElementById("list");
+    if (teachers.length === 0) {
+      list.innerHTML = `<div class="state-block"><p>No teachers yet.</p></div>`;
+    } else {
+      list.innerHTML = teachers.map((t) => `
+        <div class="t-row">
+          <div style="font-weight:600; color:var(--navy-900);">${escapeHtml(t.full_name || "—")}</div>
+          <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(t.email || "")} · Joined ${formatDate(t.created_at)}</div>
+          <div class="t-courses">
+            ${t.courses.length === 0
+              ? '<span class="badge badge-neutral">No courses assigned</span>'
+              : t.courses.map((c) => `<span class="badge badge-info">${escapeHtml(c.name)}</span>`).join("")}
+          </div>
+        </div>
+      `).join("");
+    }
+  } catch (err) {
+    document.getElementById("list").innerHTML = `<div class="alert alert-danger">Couldn't load teachers.</div>`;
+  }
+</script>
+</body>
+</html>

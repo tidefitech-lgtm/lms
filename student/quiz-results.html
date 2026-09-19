@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Results | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .q-review { border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px; margin-bottom:12px; }
+  .q-review.correct { border-color:var(--success); }
+  .q-review.incorrect { border-color:var(--danger); }
+  .opt-line { padding:6px 10px; border-radius:6px; margin-bottom:4px; font-size:0.92rem; }
+  .opt-line.was-correct { background:var(--success-bg); }
+  .opt-line.was-selected-wrong { background:var(--danger-bg); }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getAttempt, getAttemptReview, getAssessment } from "/js/assessments.js";
+  import { escapeHtml, getQueryParam, formatDateTime } from "/js/utils.js";
+
+  const attemptId = getQueryParam("attempt");
+  if (!attemptId) window.location.href = "/student/quizzes.html";
+
+  const { profile } = await requireAuth({ allowedRoles: ["student"] });
+  const content = renderAppShell({ role: "student", profile, pageTitle: "Results", activeHref: "quizzes.html" });
+
+  content.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+
+  try {
+    const attempt = await getAttempt(attemptId);
+    const assessment = await getAssessment(attempt.assessment_id);
+    const review = await getAttemptReview(attemptId);
+    const backHref = assessment.kind === "exam" ? "/student/exams.html" : "/student/quizzes.html";
+
+    content.innerHTML = `
+      <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="${backHref}">&larr; Back</a></p>
+
+      <div class="card mb-4 text-center">
+        <h2 style="margin-bottom:4px;">${escapeHtml(assessment.title)}</h2>
+        <p class="text-secondary">${escapeHtml(assessment.courses?.name || "")}</p>
+        <div style="font-size:2.2rem; font-weight:700; color:var(--navy-900); font-family:var(--font-display);">${attempt.percentage}%</div>
+        <span class="badge ${attempt.passed ? "badge-success" : "badge-danger"}" style="font-size:0.95rem;">${attempt.passed ? "Passed" : "Not passed"}</span>
+        <p class="text-secondary mt-2">Score: ${attempt.score} / ${attempt.max_score} · ${attempt.status === "auto_submitted" ? "Auto-submitted (time expired)" : "Submitted"} ${formatDateTime(attempt.submitted_at)}</p>
+      </div>
+
+      <h3>Answer Review</h3>
+      <div id="review-list">
+        ${review.map((q, i) => `
+          <div class="q-review ${q.is_correct ? "correct" : "incorrect"}">
+            <p style="font-weight:600;">${i + 1}. ${escapeHtml(q.question_text)} <span class="badge ${q.is_correct ? "badge-success" : "badge-danger"}">${q.points_awarded}/${q.points}</span></p>
+            ${(q.options || []).map((o) => {
+              const wasSelected = (q.selected_option_ids || []).includes(o.id);
+              const wasCorrect = (q.correct_option_ids || []).includes(o.id);
+              let cls = "";
+              if (wasCorrect) cls = "was-correct";
+              else if (wasSelected && !wasCorrect) cls = "was-selected-wrong";
+              return `<div class="opt-line ${cls}">${wasSelected ? "☑" : "☐"} ${escapeHtml(o.option_text)}${wasCorrect ? " ✓ correct answer" : ""}</div>`;
+            }).join("")}
+          </div>
+        `).join("")}
+      </div>
+    `;
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message || "Couldn't load results.")}</div>`;
+  }
+</script>
+</body>
+</html>

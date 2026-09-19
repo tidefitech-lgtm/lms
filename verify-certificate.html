@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Verify a Certificate | TIDEF ITECH</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body style="background:var(--gradient-brand); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
+
+<div style="max-width:520px; width:100%;">
+  <div class="flex items-center gap-3 mb-4" style="justify-content:center;">
+    <img src="https://www.tidefitech.com/img/Capture-removebg-preview.png" alt="TIDEF ITECH" style="height:40px;" />
+    <strong style="font-family:var(--font-display); color:#fff; font-size:1.1rem;">TIDEF ITECH</strong>
+  </div>
+
+  <div class="card">
+    <h1 style="text-align:center;">Verify a Certificate</h1>
+    <p class="text-secondary" style="text-align:center;">Enter the certificate number exactly as it appears on the document (e.g. TIDEF-CERT-2026-0001).</p>
+
+    <form id="verify-form" class="mt-4">
+      <div class="field">
+        <input class="input" id="certNumber" placeholder="TIDEF-CERT-2026-0001" required style="text-align:center; font-weight:600; letter-spacing:0.02em;" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="verify-btn">Verify</button>
+    </form>
+
+    <div id="result" class="mt-4"></div>
+  </div>
+
+  <p class="switch-link mt-4" style="text-align:center;"><a href="https://www.tidefitech.com" style="color:#fff;">&larr; Back to TIDEF ITECH website</a></p>
+</div>
+
+<script type="module">
+  import { verifyCertificate } from "/js/certificates.js";
+  import { escapeHtml, formatDate, setButtonLoading, getQueryParam } from "/js/utils.js";
+
+  const form = document.getElementById("verify-form");
+  const resultBox = document.getElementById("result");
+  const input = document.getElementById("certNumber");
+
+  const prefill = getQueryParam("number");
+  if (prefill) { input.value = prefill; doVerify(prefill); }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    doVerify(input.value);
+  });
+
+  async function doVerify(number) {
+    if (!number.trim()) return;
+    resultBox.innerHTML = "";
+    const btn = document.getElementById("verify-btn");
+    setButtonLoading(btn, true, "Checking…");
+    try {
+      const result = await verifyCertificate(number);
+      if (result) {
+        resultBox.innerHTML = `
+          <div class="alert alert-success">
+            <strong>✓ Valid Certificate</strong>
+            <div class="mt-2">
+              <div><strong>Name:</strong> ${escapeHtml(result.student_name)}</div>
+              <div><strong>Course:</strong> ${escapeHtml(result.course_name)}</div>
+              <div><strong>Certificate No.:</strong> ${escapeHtml(result.certificate_number)}</div>
+              <div><strong>Issued:</strong> ${formatDate(result.issued_at)}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        resultBox.innerHTML = `<div class="alert alert-danger"><strong>✕ Not Found</strong><p class="mt-2" style="margin:0;">We couldn't find a certificate with that number. Double-check it and try again.</p></div>`;
+      }
+    } catch (err) {
+      resultBox.innerHTML = `<div class="alert alert-danger">Something went wrong. Please try again.</div>`;
+    }
+    setButtonLoading(btn, false);
+  }
+</script>
+</body>
+</html>

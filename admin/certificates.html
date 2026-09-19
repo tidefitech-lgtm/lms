@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Certificates | TIDEF ITECH LMS Admin</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .elig-row, .cert-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+  .elig-row:last-child, .cert-row:last-child { border-bottom:none; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getEligibleCompletions, getAllCertificates, issueCertificate } from "/js/certificates.js";
+  import { uploadFile, getSignedUrl, fileNameFromPath } from "/js/storage.js";
+  import { showToast, setButtonLoading, escapeHtml, formatDate } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: "Certificates", activeHref: "certificates.html" });
+
+  content.innerHTML = `
+    <h2>Eligible for Certificate</h2>
+    <p class="text-secondary">Students who have completed every lesson in a course but don't have a certificate yet.</p>
+    <div class="card mb-4"><div id="eligible-list"><div class="state-block"><div class="spinner"></div></div></div></div>
+
+    <div class="card mb-4 hidden" id="issue-card">
+      <h3>Issue Certificate</h3>
+      <p id="issue-context" class="text-secondary"></p>
+      <div id="issue-alert"></div>
+      <form id="issue-form">
+        <div class="field"><label for="fileInput">Certificate file (PDF or image)</label><input class="input" type="file" id="fileInput" required /></div>
+        <div class="field"><label for="notes">Notes (optional, internal)</label><input class="input" id="notes" /></div>
+        <div class="flex gap-3">
+          <button type="submit" class="btn btn-primary" id="issue-btn">Issue Certificate</button>
+          <button type="button" class="btn btn-ghost" id="cancel-issue-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <h2>Issued Certificates</h2>
+    <div class="card"><div id="issued-list"><div class="state-block"><div class="spinner"></div></div></div></div>
+  `;
+
+  let pendingStudentId = null, pendingCourseId = null;
+
+  async function loadEligible() {
+    const list = document.getElementById("eligible-list");
+    list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const eligible = await getEligibleCompletions();
+      if (eligible.length === 0) {
+        list.innerHTML = `<div class="state-block"><p>No pending certificates — everyone who's completed a course already has one.</p></div>`;
+        return;
+      }
+      list.innerHTML = eligible.map((e) => `
+        <div class="elig-row">
+          <span>${escapeHtml(e.profiles?.full_name || "Unknown")} <span class="text-secondary">(${escapeHtml(e.profiles?.student_id || "—")})</span> — ${escapeHtml(e.courses?.name || "")}</span>
+          <button class="btn btn-primary btn-sm" data-action="issue" data-student="${e.student_id}" data-course="${e.course_id}" data-name="${escapeHtml(e.profiles?.full_name || "")}" data-coursename="${escapeHtml(e.courses?.name || "")}">Issue Certificate</button>
+        </div>
+      `).join("");
+
+      list.querySelectorAll('[data-action="issue"]').forEach((btn) => {
+        btn.addEventListener("click", () => {
+          pendingStudentId = btn.dataset.student;
+          pendingCourseId = btn.dataset.course;
+          document.getElementById("issue-context").textContent = `${btn.dataset.name} — ${btn.dataset.coursename}`;
+          document.getElementById("issue-card").classList.remove("hidden");
+          document.getElementById("issue-card").scrollIntoView({ behavior: "smooth" });
+        });
+      });
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-danger">Couldn't load eligible students.</div>`;
+    }
+  }
+
+  document.getElementById("cancel-issue-btn").addEventListener("click", () => {
+    document.getElementById("issue-card").classList.add("hidden");
+  });
+
+  document.getElementById("issue-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById("issue-alert");
+    alertBox.innerHTML = "";
+    const btn = document.getElementById("issue-btn");
+    const fileInput = document.getElementById("fileInput");
+    if (!fileInput.files[0]) return;
+
+    setButtonLoading(btn, true, "Issuing…");
+    try {
+      const filePath = await uploadFile("certificates", pendingStudentId, fileInput.files[0]);
+      await issueCertificate({
+        studentId: pendingStudentId,
+        courseId: pendingCourseId,
+        filePath,
+        notes: document.getElementById("notes").value.trim(),
+      });
+      showToast("Certificate issued.", "success");
+      document.getElementById("issue-form").reset();
+      document.getElementById("issue-card").classList.add("hidden");
+      loadEligible();
+      loadIssued();
+    } catch (err) {
+      alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message || "Couldn't issue certificate.")}</div>`;
+    }
+    setButtonLoading(btn, false);
+  });
+
+  async function loadIssued() {
+    const list = document.getElementById("issued-list");
+    list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const certs = await getAllCertificates();
+      if (certs.length === 0) {
+        list.innerHTML = `<div class="state-block"><p>No certificates issued yet.</p></div>`;
+        return;
+      }
+      const rows = await Promise.all(certs.map(async (c) => {
+        const link = await getSignedUrl("certificates", c.file_path);
+        return `
+          <div class="cert-row">
+            <div>
+              <div style="font-weight:600; color:var(--navy-900);">${escapeHtml(c.profiles?.full_name || "Unknown")} <span class="text-secondary">(${escapeHtml(c.profiles?.student_id || "—")})</span></div>
+              <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(c.courses?.name || "")} · ${escapeHtml(c.certificate_number)} · Issued ${formatDate(c.issued_at)}</div>
+            </div>
+            ${link ? `<a class="btn btn-outline btn-sm" href="${link}" target="_blank" rel="noopener">📎 View</a>` : ""}
+          </div>
+        `;
+      }));
+      list.innerHTML = rows.join("");
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-danger">Couldn't load certificates.</div>`;
+    }
+  }
+
+  loadEligible();
+  loadIssued();
+</script>
+</body>
+</html>

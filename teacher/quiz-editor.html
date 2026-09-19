@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manage Quiz | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .tabs { display:flex; gap:8px; border-bottom:1px solid var(--border-subtle); margin-bottom:20px; }
+  .tab-btn { background:none; border:none; padding:10px 4px; margin-right:20px; font-weight:600; color:var(--text-secondary); cursor:pointer; border-bottom:2px solid transparent; }
+  .tab-btn.active { color:var(--navy-900); border-bottom-color:var(--gold-500); }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+  .q-block { border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px; margin-bottom:16px; }
+  .opt-row { display:flex; align-items:center; gap:8px; padding:6px 0; }
+  .opt-row input[type="text"] { flex:1; }
+  .attempt-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border-subtle); gap:12px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import {
+    getAssessment, updateAssessment, deleteAssessment,
+    getQuestionsForEditing, createQuestion, updateQuestion, deleteQuestion,
+    createOption, updateOption, deleteOption,
+    getAssessmentAttempts,
+  } from "/js/assessments.js";
+  import { showToast, setButtonLoading, escapeHtml, formatDateTime, getQueryParam } from "/js/utils.js";
+
+  const assessmentId = getQueryParam("id");
+  if (!assessmentId) window.location.href = "/teacher/quizzes.html";
+
+  const { profile } = await requireAuth({ allowedRoles: ["teacher", "admin", "super_admin"] });
+  const isStaff = profile.role !== "teacher";
+  const backHref = isStaff ? "/admin/quizzes.html" : "/teacher/quizzes.html";
+
+  let assessment;
+  try {
+    assessment = await getAssessment(assessmentId);
+  } catch (err) {
+    document.body.innerHTML = `<div class="state-block"><p>Not found.</p><a href="${backHref}" class="btn btn-outline">Back</a></div>`;
+    throw err;
+  }
+
+  const kindLabel = assessment.kind === "quiz" ? "Quiz" : "Exam";
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: assessment.title, activeHref: "quizzes.html" });
+
+  content.innerHTML = `
+    <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="${backHref}">&larr; Quizzes & Exams</a></p>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="questions">Questions</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
+      <button class="tab-btn" data-tab="results">Results</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-questions">
+      <div class="card mb-4">
+        <h3>Add Question</h3>
+        <form id="add-question-form">
+          <div class="field"><label for="qText">Question</label><textarea class="input" id="qText" rows="2" required></textarea></div>
+          <div class="form-row-2">
+            <div class="field"><label for="qType">Type</label>
+              <select class="input" id="qType">
+                <option value="single_choice">Single choice</option>
+                <option value="true_false">True / False</option>
+                <option value="multi_select">Multiple answer</option>
+              </select>
+            </div>
+            <div class="field"><label for="qPoints">Points</label><input class="input" type="number" id="qPoints" value="1" min="0.5" step="0.5" /></div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">+ Add Question</button>
+        </form>
+      </div>
+      <div id="questions-list"><div class="state-block"><div class="spinner"></div></div></div>
+    </div>
+
+    <div class="tab-panel" id="tab-settings">
+      <div class="card">
+        <div id="settings-alert"></div>
+        <form id="settings-form">
+          <div class="field"><label for="title">Title</label><input class="input" id="title" value="${escapeHtml(assessment.title)}" required /></div>
+          <div class="field"><label for="description">Description</label><textarea class="input" id="description" rows="2">${escapeHtml(assessment.description || "")}</textarea></div>
+          <div class="form-row-2">
+            <div class="field"><label for="timeLimit">Time limit (minutes)</label><input class="input" type="number" id="timeLimit" min="1" value="${assessment.time_limit_minutes ?? ""}" /></div>
+            <div class="field"><label for="maxAttempts">Max attempts</label><input class="input" type="number" id="maxAttempts" min="1" value="${assessment.max_attempts}" /></div>
+          </div>
+          <div class="field"><label for="passingScore">Passing score (%)</label><input class="input" type="number" id="passingScore" min="0" max="100" value="${assessment.passing_score}" /></div>
+          <button type="submit" class="btn btn-primary">Save Settings</button>
+        </form>
+        <button class="btn btn-danger mt-4" id="delete-btn">Delete ${kindLabel}</button>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-results">
+      <div class="card"><h3>Attempts</h3><div id="results-list"><div class="state-block"><div class="spinner"></div></div></div></div>
+    </div>
+  `;
+
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+      if (btn.dataset.tab === "results") loadResults();
+    });
+  });
+
+  // ---------- Questions ----------
+  document.getElementById("add-question-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = document.getElementById("qText").value.trim();
+    if (!text) return;
+    const type = document.getElementById("qType").value;
+    const points = Number(document.getElementById("qPoints").value) || 1;
+    try {
+      const existing = await getQuestionsForEditing(assessmentId);
+      const question = await createQuestion(assessmentId, { questionText: text, questionType: type, points, position: existing.length });
+
+      if (type === "true_false") {
+        await createOption(question.id, { optionText: "True", isCorrect: true, position: 0 });
+        await createOption(question.id, { optionText: "False", isCorrect: false, position: 1 });
+      } else {
+        await createOption(question.id, { optionText: "Option A", isCorrect: true, position: 0 });
+        await createOption(question.id, { optionText: "Option B", isCorrect: false, position: 1 });
+      }
+      document.getElementById("add-question-form").reset();
+      loadQuestions();
+    } catch (err) {
+      showToast(err.message || "Couldn't add question.", "error");
+    }
+  });
+
+  async function loadQuestions() {
+    const list = document.getElementById("questions-list");
+    list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const questions = await getQuestionsForEditing(assessmentId);
+      if (questions.length === 0) {
+        list.innerHTML = `<div class="card"><div class="state-block"><p>No questions yet. Add one above.</p></div></div>`;
+        return;
+      }
+      list.innerHTML = "";
+      questions.forEach((q) => list.appendChild(renderQuestion(q)));
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-danger">Couldn't load questions.</div>`;
+    }
+  }
+
+  function renderQuestion(q) {
+    const block = document.createElement("div");
+    block.className = "q-block";
+    const typeLabel = { single_choice: "Single choice", true_false: "True/False", multi_select: "Multiple answer" }[q.question_type];
+    block.innerHTML = `
+      <div class="flex items-center justify-between mb-2">
+        <strong>${escapeHtml(q.question_text)}</strong>
+        <button class="btn btn-danger btn-sm" data-action="delete-question">Delete</button>
+      </div>
+      <div class="text-secondary mb-2" style="font-size:0.82rem;">${typeLabel} · ${q.points} pt(s)</div>
+      <div data-role="options"></div>
+      ${q.question_type !== "true_false" ? `<button class="btn btn-outline btn-sm mt-2" data-action="add-option">+ Add Option</button>` : ""}
+    `;
+
+    const optionsHost = block.querySelector('[data-role="options"]');
+    q.question_options.forEach((o) => optionsHost.appendChild(renderOption(q, o)));
+
+    block.querySelector('[data-action="delete-question"]').addEventListener("click", async () => {
+      if (!confirm("Delete this question?")) return;
+      try { await deleteQuestion(q.id); loadQuestions(); } catch (err) { showToast(err.message, "error"); }
+    });
+
+    block.querySelector('[data-action="add-option"]')?.addEventListener("click", async () => {
+      try {
+        await createOption(q.id, { optionText: `Option ${q.question_options.length + 1}`, isCorrect: false, position: q.question_options.length });
+        loadQuestions();
+      } catch (err) { showToast(err.message, "error"); }
+    });
+
+    return block;
+  }
+
+  function renderOption(q, o) {
+    const row = document.createElement("div");
+    row.className = "opt-row";
+    const inputType = q.question_type === "multi_select" ? "checkbox" : "radio";
+    row.innerHTML = `
+      <input type="${inputType}" name="correct-${q.id}" data-role="correct" ${o.is_correct ? "checked" : ""} title="Mark as correct answer" />
+      <input type="text" class="input" data-role="text" value="${escapeHtml(o.option_text)}" ${q.question_type === "true_false" ? "readonly" : ""} />
+      ${q.question_type !== "true_false" ? `<button class="btn btn-ghost btn-sm" data-action="remove-option">✕</button>` : ""}
+    `;
+
+    row.querySelector('[data-role="correct"]').addEventListener("change", async (e) => {
+      try {
+        if (q.question_type !== "multi_select") {
+          // Single-choice/true-false: only one correct option — uncheck the rest.
+          for (const sibling of q.question_options) {
+            if (sibling.id !== o.id) await updateOption(sibling.id, { is_correct: false });
+          }
+        }
+        await updateOption(o.id, { is_correct: e.target.checked });
+        loadQuestions();
+      } catch (err) { showToast(err.message, "error"); }
+    });
+
+    row.querySelector('[data-role="text"]').addEventListener("blur", async (e) => {
+      if (q.question_type === "true_false") return;
+      try { await updateOption(o.id, { option_text: e.target.value.trim() }); } catch (err) { showToast(err.message, "error"); }
+    });
+
+    row.querySelector('[data-action="remove-option"]')?.addEventListener("click", async () => {
+      try { await deleteOption(o.id); loadQuestions(); } catch (err) { showToast(err.message, "error"); }
+    });
+
+    return row;
+  }
+
+  // ---------- Settings ----------
+  document.getElementById("settings-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById("settings-alert");
+    alertBox.innerHTML = "";
+    const btn = e.target.querySelector("button[type=submit]");
+    setButtonLoading(btn, true, "Saving…");
+    try {
+      await updateAssessment(assessmentId, {
+        title: document.getElementById("title").value.trim(),
+        description: document.getElementById("description").value.trim() || null,
+        time_limit_minutes: document.getElementById("timeLimit").value ? Number(document.getElementById("timeLimit").value) : null,
+        max_attempts: Number(document.getElementById("maxAttempts").value) || 1,
+        passing_score: Number(document.getElementById("passingScore").value) || 60,
+      });
+      showToast("Settings saved.", "success");
+    } catch (err) {
+      alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message)}</div>`;
+    }
+    setButtonLoading(btn, false);
+  });
+
+  document.getElementById("delete-btn").addEventListener("click", async () => {
+    if (!confirm(`Delete this ${kindLabel.toLowerCase()} and all its questions and attempts? This can't be undone.`)) return;
+    try {
+      await deleteAssessment(assessmentId);
+      window.location.href = backHref;
+    } catch (err) {
+      showToast(err.message || "Couldn't delete.", "error");
+    }
+  });
+
+  // ---------- Results ----------
+  async function loadResults() {
+    const list = document.getElementById("results-list");
+    list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const attempts = await getAssessmentAttempts(assessmentId);
+      if (attempts.length === 0) {
+        list.innerHTML = `<div class="state-block"><p>No attempts yet.</p></div>`;
+        return;
+      }
+      list.innerHTML = attempts.map((a) => `
+        <div class="attempt-row">
+          <span>${escapeHtml(a.profiles?.full_name || "Unknown")} <span class="text-secondary">(${escapeHtml(a.profiles?.student_id || "—")})</span></span>
+          <span class="text-secondary">Attempt ${a.attempt_number}</span>
+          <span class="badge ${a.status === "in_progress" ? "badge-warning" : a.passed ? "badge-success" : "badge-danger"}">
+            ${a.status === "in_progress" ? "In progress" : `${a.percentage}% ${a.passed ? "· Passed" : "· Failed"}`}
+          </span>
+          <span class="text-secondary">${a.submitted_at ? formatDateTime(a.submitted_at) : "—"}</span>
+        </div>
+      `).join("");
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-danger">Couldn't load results.</div>`;
+    }
+  }
+
+  loadQuestions();
+</script>
+</body>
+</html>

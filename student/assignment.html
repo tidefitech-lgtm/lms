@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Assignment | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getAssignment, getMySubmission, submitAssignment } from "/js/assignments.js";
+  import { uploadFile, getSignedUrl, fileNameFromPath } from "/js/storage.js";
+  import { escapeHtml, formatDateTime, getQueryParam, showToast, setButtonLoading } from "/js/utils.js";
+
+  const assignmentId = getQueryParam("id");
+  if (!assignmentId) window.location.href = "/student/assignments.html";
+
+  const { profile, user } = await requireAuth({ allowedRoles: ["student"] });
+  const content = renderAppShell({ role: "student", profile, pageTitle: "Assignment", activeHref: "assignments.html" });
+
+  content.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+
+  let assignment, mySubmission;
+  try {
+    assignment = await getAssignment(assignmentId);
+    mySubmission = await getMySubmission(assignmentId);
+  } catch (err) {
+    content.innerHTML = `<div class="card"><div class="state-block"><p>Assignment not found or you don't have access to it.</p><a href="/student/assignments.html" class="btn btn-outline">Back</a></div></div>`;
+    throw err;
+  }
+
+  const existingFileLink = mySubmission?.file_path ? await getSignedUrl("submission-files", mySubmission.file_path) : null;
+  const canResubmit = !mySubmission || mySubmission.status !== "graded" || assignment.allow_resubmission;
+
+  render();
+
+  function render() {
+    content.innerHTML = `
+      <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="/student/assignments.html">&larr; Assignments</a></p>
+
+      <div class="card mb-4">
+        <h2 style="margin-bottom:4px;">${escapeHtml(assignment.title)}</h2>
+        <p class="text-secondary" style="margin:0;">${escapeHtml(assignment.courses?.name || "")} · Max marks: ${assignment.max_marks}${assignment.due_at ? " · Due " + formatDateTime(assignment.due_at) : ""}</p>
+        ${assignment.instructions ? `<p class="mt-2" style="white-space:pre-wrap;">${escapeHtml(assignment.instructions)}</p>` : ""}
+      </div>
+
+      ${mySubmission?.status === "graded" ? `
+        <div class="card mb-4">
+          <h3>Your Grade</h3>
+          <p><span class="badge badge-success" style="font-size:1rem;">${mySubmission.grade} / ${assignment.max_marks}</span></p>
+          ${mySubmission.feedback ? `<p><strong>Feedback:</strong> ${escapeHtml(mySubmission.feedback)}</p>` : ""}
+        </div>
+      ` : ""}
+
+      ${mySubmission ? `
+        <div class="card mb-4">
+          <h3>Your Submission</h3>
+          <p class="text-secondary" style="font-size:0.85rem;">Submitted ${formatDateTime(mySubmission.submitted_at)} · Attempt ${mySubmission.attempt_number}</p>
+          ${mySubmission.content_text ? `<div style="white-space:pre-wrap;">${escapeHtml(mySubmission.content_text)}</div>` : ""}
+          ${existingFileLink ? `<a class="btn btn-outline btn-sm mt-2" href="${existingFileLink}" target="_blank" rel="noopener">📎 ${escapeHtml(fileNameFromPath(mySubmission.file_path))}</a>` : ""}
+        </div>
+      ` : ""}
+
+      ${canResubmit ? `
+        <div class="card">
+          <h3>${mySubmission ? "Resubmit" : "Submit Your Answer"}</h3>
+          <div id="submit-alert"></div>
+          <form id="submit-form">
+            <div class="field"><label for="contentText">Written answer</label><textarea class="input" id="contentText" rows="5"></textarea></div>
+            <div class="field"><label for="fileInput">Attach a file (optional)</label><input class="input" type="file" id="fileInput" /></div>
+            <button type="submit" class="btn btn-primary" id="submit-btn">${mySubmission ? "Resubmit" : "Submit"}</button>
+          </form>
+        </div>
+      ` : `<div class="alert alert-info">This assignment doesn't allow resubmission after grading.</div>`}
+    `;
+
+    if (mySubmission?.content_text) document.getElementById("contentText")?.setAttribute("data-prefill", "1");
+    const textarea = document.getElementById("contentText");
+    if (textarea && mySubmission?.content_text) textarea.value = mySubmission.content_text;
+
+    document.getElementById("submit-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const alertBox = document.getElementById("submit-alert");
+      alertBox.innerHTML = "";
+      const btn = document.getElementById("submit-btn");
+      const fileInput = document.getElementById("fileInput");
+      const contentText = document.getElementById("contentText").value.trim();
+
+      if (!contentText && !fileInput.files[0] && !mySubmission?.file_path) {
+        alertBox.innerHTML = `<div class="alert alert-danger">Add a written answer or attach a file.</div>`;
+        return;
+      }
+
+      setButtonLoading(btn, true, "Submitting…");
+      try {
+        let filePath = mySubmission?.file_path || null;
+        if (fileInput.files[0]) {
+          filePath = await uploadFile("submission-files", user.id, fileInput.files[0]);
+        }
+        await submitAssignment(assignmentId, { contentText, filePath });
+        showToast("Assignment submitted.", "success");
+        mySubmission = await getMySubmission(assignmentId);
+        render();
+      } catch (err) {
+        alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message || "Couldn't submit.")}</div>`;
+        setButtonLoading(btn, false);
+      }
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quizzes & Exams | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<style>
+  .a-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+  .a-row:last-child { border-bottom:none; }
+  .kind-tabs { display:flex; gap:8px; margin-bottom:16px; }
+  .kind-tab { padding:8px 18px; border-radius:var(--radius-pill); border:1px solid var(--border-subtle); background:var(--white); cursor:pointer; font-weight:600; font-size:0.88rem; color:var(--text-secondary); }
+  .kind-tab.active { background:var(--gradient-gold); color:var(--navy-900); border-color:transparent; }
+</style>
+</head>
+<body>
+
+<script type="module">
+  import { requireAuth } from "/js/guards.js";
+  import { renderAppShell } from "/js/components.js";
+  import { getTeacherCourses } from "/js/courses.js";
+  import { getAssessmentsForCourses, createAssessment } from "/js/assessments.js";
+  import { showToast, setButtonLoading, escapeHtml, formatDateTime } from "/js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["teacher"] });
+  const content = renderAppShell({ role: "teacher", profile, pageTitle: "Quizzes & Exams", activeHref: "quizzes.html" });
+
+  let kind = "quiz";
+  const myCourses = await getTeacherCourses();
+
+  content.innerHTML = `
+    <div class="kind-tabs">
+      <button class="kind-tab active" data-kind="quiz">Quizzes</button>
+      <button class="kind-tab" data-kind="exam">Exams</button>
+    </div>
+    <div class="flex items-center justify-between mb-4" style="flex-wrap:wrap; gap:12px;">
+      <h2 style="margin:0;" id="section-title">Quizzes</h2>
+      <button class="btn btn-primary" id="new-btn">+ New Quiz</button>
+    </div>
+
+    <div class="card mb-4 hidden" id="new-card">
+      <h3 id="form-title">Create Quiz</h3>
+      <div id="create-alert"></div>
+      <form id="create-form">
+        <div class="field"><label for="courseId">Course</label><select class="input" id="courseId" required></select></div>
+        <div class="field"><label for="title">Title</label><input class="input" id="title" required /></div>
+        <div class="field"><label for="description">Description</label><textarea class="input" id="description" rows="2"></textarea></div>
+        <div class="form-row-2">
+          <div class="field"><label for="timeLimit">Time limit (minutes, optional)</label><input class="input" type="number" id="timeLimit" min="1" /></div>
+          <div class="field"><label for="maxAttempts">Max attempts</label><input class="input" type="number" id="maxAttempts" value="1" min="1" /></div>
+        </div>
+        <div class="form-row-2">
+          <div class="field"><label for="passingScore">Passing score (%)</label><input class="input" type="number" id="passingScore" value="60" min="0" max="100" /></div>
+          <div class="field hidden" id="scheduleField"><label for="availableFrom">Available from</label><input class="input" type="datetime-local" id="availableFrom" /></div>
+        </div>
+        <div class="flex gap-3">
+          <button type="submit" class="btn btn-primary" id="create-btn">Create</button>
+          <button type="button" class="btn btn-ghost" id="cancel-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card"><div id="list"><div class="state-block"><div class="spinner"></div></div></div></div>
+  `;
+
+  document.getElementById("courseId").innerHTML = myCourses.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("") || '<option value="">No assigned courses</option>';
+
+  document.querySelectorAll(".kind-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      kind = tab.dataset.kind;
+      document.querySelectorAll(".kind-tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      const label = kind === "quiz" ? "Quiz" : "Exam";
+      document.getElementById("section-title").textContent = kind === "quiz" ? "Quizzes" : "Exams";
+      document.getElementById("new-btn").textContent = `+ New ${label}`;
+      document.getElementById("form-title").textContent = `Create ${label}`;
+      document.getElementById("scheduleField").classList.toggle("hidden", kind !== "exam");
+      loadList();
+    });
+  });
+
+  document.getElementById("new-btn").addEventListener("click", () => document.getElementById("new-card").classList.toggle("hidden"));
+  document.getElementById("cancel-btn").addEventListener("click", () => document.getElementById("new-card").classList.add("hidden"));
+
+  document.getElementById("create-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById("create-alert");
+    alertBox.innerHTML = "";
+    const btn = document.getElementById("create-btn");
+    setButtonLoading(btn, true, "Creating…");
+    try {
+      const availableFromVal = document.getElementById("availableFrom").value;
+      await createAssessment({
+        course_id: document.getElementById("courseId").value,
+        kind,
+        title: document.getElementById("title").value.trim(),
+        description: document.getElementById("description").value.trim() || null,
+        time_limit_minutes: document.getElementById("timeLimit").value ? Number(document.getElementById("timeLimit").value) : null,
+        max_attempts: Number(document.getElementById("maxAttempts").value) || 1,
+        passing_score: Number(document.getElementById("passingScore").value) || 60,
+        available_from: kind === "exam" && availableFromVal ? new Date(availableFromVal).toISOString() : null,
+      });
+      showToast(`${kind === "quiz" ? "Quiz" : "Exam"} created.`, "success");
+      document.getElementById("create-form").reset();
+      document.getElementById("new-card").classList.add("hidden");
+      loadList();
+    } catch (err) {
+      alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message)}</div>`;
+    }
+    setButtonLoading(btn, false);
+  });
+
+  async function loadList() {
+    const list = document.getElementById("list");
+    list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;
+    try {
+      const items = await getAssessmentsForCourses(myCourses.map((c) => c.id), kind);
+      if (items.length === 0) {
+        list.innerHTML = `<div class="state-block"><p>No ${kind === "quiz" ? "quizzes" : "exams"} yet.</p></div>`;
+        return;
+      }
+      list.innerHTML = items.map((a) => `
+        <div class="a-row">
+          <div>
+            <div style="font-weight:600; color:var(--navy-900);">${escapeHtml(a.title)}</div>
+            <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(a.courses?.name || "")} · ${a.time_limit_minutes ? a.time_limit_minutes + " min" : "No time limit"} · Pass: ${a.passing_score}% · ${a.max_attempts} attempt(s)</div>
+          </div>
+          <a class="btn btn-outline btn-sm" href="/teacher/quiz-editor.html?id=${a.id}">Manage</a>
+        </div>
+      `).join("");
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-danger">Couldn't load list.</div>`;
+    }
+  }
+
+  loadList();
+</script>
+</body>
+</html>
