@@ -6,7 +6,7 @@
 <title>Student ID Card | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .id-card { width:100%; max-width:380px; margin:0 auto; border-radius:20px; overflow:hidden; box-shadow:var(--shadow-lg); background:var(--white); }
   .id-card-header { background:var(--gradient-brand); color:#fff; padding:16px 20px; display:flex; align-items:center; gap:10px; }
@@ -27,10 +27,10 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getMyEnrolledCourses } from "/js/courses.js";
-  import { escapeHtml, getInitials, formatDate } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getMyEnrolledCourses } from "../js/courses.js";
+  import { escapeHtml, getInitials, formatDate } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["student"] });
   const content = renderAppShell({ role: "student", profile, pageTitle: "Student ID Card", activeHref: "id-card.html" });

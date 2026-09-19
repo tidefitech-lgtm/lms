@@ -6,7 +6,7 @@
 <title>Verify a Certificate | TIDEF ITECH</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="./css/style.css" />
 </head>
 <body style="background:var(--gradient-brand); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
 
@@ -34,8 +34,8 @@
 </div>
 
 <script type="module">
-  import { verifyCertificate } from "/js/certificates.js";
-  import { escapeHtml, formatDate, setButtonLoading, getQueryParam } from "/js/utils.js";
+  import { verifyCertificate } from "./js/certificates.js";
+  import { escapeHtml, formatDate, setButtonLoading, getQueryParam } from "./js/utils.js";
 
   const form = document.getElementById("verify-form");
   const resultBox = document.getElementById("result");

@@ -33,12 +33,21 @@ export const ENROLLMENT_STATUS = Object.freeze({
   COMPLETED: "completed",
 });
 
+export function appPath(path) {
+  const pageDirectory = window.location.pathname.slice(
+    0,
+    window.location.pathname.lastIndexOf("/") + 1,
+  );
+  const isNestedPage = /\/(admin|student|teacher)\/$/.test(pageDirectory);
+  return `${isNestedPage ? "../" : "./"}${path}`;
+}
+
 // Where a signed-in user of each role should land after login
 export const ROLE_HOME_PAGE = Object.freeze({
-  [ROLES.SUPER_ADMIN]: "/admin/dashboard.html",
-  [ROLES.ADMIN]: "/admin/dashboard.html",
-  [ROLES.TEACHER]: "/teacher/dashboard.html",
-  [ROLES.STUDENT]: "/student/dashboard.html",
+  [ROLES.SUPER_ADMIN]: appPath("admin/dashboard.html"),
+  [ROLES.ADMIN]: appPath("admin/dashboard.html"),
+  [ROLES.TEACHER]: appPath("teacher/dashboard.html"),
+  [ROLES.STUDENT]: appPath("student/dashboard.html"),
 });
 
 // Public marketing site (outside the LMS) — used for the "Back to website" link

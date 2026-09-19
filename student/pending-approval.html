@@ -6,7 +6,7 @@
 <title>Account Pending | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 </head>
 <body style="background:var(--gradient-brand); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
 
@@ -20,24 +20,24 @@
 </div>
 
 <script type="module">
-  import { onAuthReady, logout } from "/js/auth.js";
-  import { ROLE_HOME_PAGE } from "/js/config.js";
-  import { getSettings } from "/js/admin.js";
+  import { onAuthReady, logout } from "../js/auth.js";
+  import { ROLE_HOME_PAGE } from "../js/config.js";
+  import { getSettings } from "../js/admin.js";
 
   onAuthReady(async ({ user, profile }) => {
-    if (!user) { window.location.href = "/login.html"; return; }
+    if (!user) { window.location.href = "../login.html"; return; }
     if (!user.email_confirmed_at) {
-      window.location.href = `/verify-email.html?email=${encodeURIComponent(user.email)}`;
+      window.location.href = `../verify-email.html?email=${encodeURIComponent(user.email)}`;
       return;
     }
     if (!profile) return;
 
     if (profile.role !== "student") {
-      window.location.href = ROLE_HOME_PAGE[profile.role] || "/login.html";
+      window.location.href = ROLE_HOME_PAGE[profile.role] || "../login.html";
       return;
     }
     if (profile.account_status === "approved") {
-      window.location.href = "/student/dashboard.html";
+      window.location.href = "./dashboard.html";
       return;
     }
 
@@ -62,15 +62,15 @@
     if (paymentStatus === "not_submitted") {
       paymentBlock = `
         <div class="alert alert-info">You haven't told us you've paid yet. Once you've made your payment to TIDEF ITECH directly, let us know below.</div>`;
-      ctaButton = `<a href="/student/payment.html" class="btn btn-primary btn-block mt-4">I Have Completed Payment</a>`;
+      ctaButton = `<a href="./payment.html" class="btn btn-primary btn-block mt-4">I Have Completed Payment</a>`;
     } else if (paymentStatus === "pending_verification") {
       paymentBlock = `
         <div class="alert alert-warning">Thanks — we've received your payment confirmation and it's waiting for an admin to verify it against our records. This usually doesn't take long.</div>`;
-      ctaButton = `<a href="/student/payment.html" class="btn btn-outline btn-block mt-4">View Submission Details</a>`;
+      ctaButton = `<a href="./payment.html" class="btn btn-outline btn-block mt-4">View Submission Details</a>`;
     } else if (paymentStatus === "rejected") {
       paymentBlock = `
         <div class="alert alert-danger">We couldn't verify your last payment confirmation. See the reason and submit a new confirmation once resolved.</div>`;
-      ctaButton = `<a href="/student/payment.html" class="btn btn-primary btn-block mt-4">Review & Resubmit</a>`;
+      ctaButton = `<a href="./payment.html" class="btn btn-primary btn-block mt-4">Review & Resubmit</a>`;
     }
 
     content.innerHTML = `
@@ -84,7 +84,7 @@
 
   document.getElementById("logout-btn").addEventListener("click", async () => {
     await logout();
-    window.location.href = "/login.html";
+    window.location.href = "../login.html";
   });
 </script>
 </body>

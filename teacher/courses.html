@@ -6,15 +6,15 @@
 <title>My Courses | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getTeacherCourses } from "/js/courses.js";
-  import { escapeHtml } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getTeacherCourses } from "../js/courses.js";
+  import { escapeHtml } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["teacher"] });
   const content = renderAppShell({ role: "teacher", profile, pageTitle: "My Courses", activeHref: "courses.html" });
@@ -35,7 +35,7 @@
           </div>
           <div class="flex items-center gap-3">
             <span class="badge ${c.status === "published" ? "badge-success" : "badge-neutral"}">${c.status}</span>
-            <a class="btn btn-outline btn-sm" href="/teacher/course-editor.html?id=${c.id}">Manage Content</a>
+            <a class="btn btn-outline btn-sm" href="./course-editor.html?id=${c.id}">Manage Content</a>
           </div>
         </div>
       `).join("");

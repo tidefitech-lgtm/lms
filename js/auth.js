@@ -11,12 +11,17 @@
 
 import { supabase } from "./supabase.js";
 
+function appUrl(path) {
+  return new URL(`./${path}`, document.baseURI).href;
+}
+
 /**
  * Register a new student account.
  * @param {Object} data - fullName, email, phone, password, dob, gender, address, courseId
  */
 export async function registerStudent(data) {
-  const { email, password, fullName, phone, dob, gender, address, courseId } = data;
+  const { email, password, fullName, phone, dob, gender, address, courseId } =
+    data;
 
   const { data: signUpData, error } = await supabase.auth.signUp({
     email,
@@ -30,7 +35,7 @@ export async function registerStudent(data) {
         address: address || null,
         interested_course_id: courseId || null,
       },
-      emailRedirectTo: `${window.location.origin}/verify-email.html`,
+      emailRedirectTo: appUrl("verify-email.html"),
     },
   });
 
@@ -40,7 +45,10 @@ export async function registerStudent(data) {
 
 /** Log in with email + password. Throws if the email isn't confirmed yet. */
 export async function login(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
   if (error) throw error;
   return data.user;
 }
@@ -56,7 +64,7 @@ export async function resendVerificationEmail(email) {
   const { error } = await supabase.auth.resend({
     type: "signup",
     email,
-    options: { emailRedirectTo: `${window.location.origin}/verify-email.html` },
+    options: { emailRedirectTo: appUrl("verify-email.html") },
   });
   if (error) throw error;
 }
@@ -64,7 +72,7 @@ export async function resendVerificationEmail(email) {
 /** Send a password-reset email; landing page is reset-password.html. */
 export async function requestPasswordReset(email) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password.html`,
+    redirectTo: appUrl("reset-password.html"),
   });
   if (error) throw error;
 }
@@ -77,7 +85,11 @@ export async function setNewPassword(newPassword) {
 
 /** Fetch the profiles row for a given user id. */
 export async function getUserProfile(uid) {
-  const { data, error } = await supabase.from("profiles").select("*").eq("id", uid).single();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", uid)
+    .single();
   if (error) return null;
   return data;
 }
@@ -109,11 +121,15 @@ export function onAuthReady(callback) {
     callback({ user, profile });
   }
 
-  supabase.auth.getSession().then(({ data: { session } }) => emit(session?.user || null));
+  supabase.auth
+    .getSession()
+    .then(({ data: { session } }) => emit(session?.user || null));
 
-  const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-    emit(session?.user || null);
-  });
+  const { data: listener } = supabase.auth.onAuthStateChange(
+    (_event, session) => {
+      emit(session?.user || null);
+    },
+  );
 
   return () => listener.subscription.unsubscribe();
 }

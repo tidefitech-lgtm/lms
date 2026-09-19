@@ -6,7 +6,7 @@
 <title>Manage Course | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .tabs { display:flex; gap:8px; border-bottom:1px solid var(--border-subtle); margin-bottom:20px; }
   .tab-btn { background:none; border:none; padding:10px 4px; margin-right:20px; font-weight:600; color:var(--text-secondary); cursor:pointer; border-bottom:2px solid transparent; }
@@ -22,17 +22,17 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
   import {
     getCourse, updateCourse, getCurriculum,
     createModule, deleteModule, createLesson, updateLesson, deleteLesson,
     getCourseEnrollments,
-  } from "/js/courses.js";
-  import { showToast, setButtonLoading, escapeHtml, formatDate, getQueryParam } from "/js/utils.js";
+  } from "../js/courses.js";
+  import { showToast, setButtonLoading, escapeHtml, formatDate, getQueryParam } from "../js/utils.js";
 
   const courseId = getQueryParam("id");
-  if (!courseId) window.location.href = "/teacher/courses.html";
+  if (!courseId) window.location.href = "./courses.html";
 
   const { profile } = await requireAuth({ allowedRoles: ["teacher"] });
 
@@ -41,14 +41,14 @@
     course = await getCourse(courseId);
     if (course.teacher_id !== profile.id) throw new Error("not your course");
   } catch (err) {
-    document.body.innerHTML = `<div class="state-block"><p>You don't have access to this course.</p><a href="/teacher/courses.html" class="btn btn-outline">Back</a></div>`;
+    document.body.innerHTML = `<div class="state-block"><p>You don't have access to this course.</p><a href="./courses.html" class="btn btn-outline">Back</a></div>`;
     throw err;
   }
 
   const content = renderAppShell({ role: "teacher", profile, pageTitle: course.name, activeHref: "courses.html" });
 
   content.innerHTML = `
-    <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="/teacher/courses.html">&larr; My Courses</a></p>
+    <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="./courses.html">&larr; My Courses</a></p>
 
     <div class="tabs">
       <button class="tab-btn active" data-tab="details">Description</button>

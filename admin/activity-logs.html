@@ -6,7 +6,7 @@
 <title>Activity Logs | TIDEF ITECH LMS Admin</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .log-row { display:flex; justify-content:space-between; gap:16px; padding:10px 0; border-bottom:1px solid var(--border-subtle); font-size:0.88rem; flex-wrap:wrap; }
   .log-row:last-child { border-bottom:none; }
@@ -15,10 +15,10 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getActivityLogs } from "/js/admin.js";
-  import { escapeHtml, formatDateTime } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getActivityLogs } from "../js/admin.js";
+  import { escapeHtml, formatDateTime } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
   const content = renderAppShell({ role: profile.role, profile, pageTitle: "Activity Logs", activeHref: "activity-logs.html" });

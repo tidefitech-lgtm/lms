@@ -6,7 +6,7 @@
 <title>Certificates | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .cert-card { border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:20px; margin-bottom:16px; background:var(--white); display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
   .cert-icon { width:52px; height:52px; border-radius:var(--radius-md); background:var(--gradient-gold); display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex-shrink:0; }
@@ -15,11 +15,11 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getMyCertificates } from "/js/certificates.js";
-  import { getSignedUrl } from "/js/storage.js";
-  import { escapeHtml, formatDate } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getMyCertificates } from "../js/certificates.js";
+  import { getSignedUrl } from "../js/storage.js";
+  import { escapeHtml, formatDate } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["student"] });
   const content = renderAppShell({ role: "student", profile, pageTitle: "Certificates", activeHref: "certificates.html" });

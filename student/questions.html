@@ -6,7 +6,7 @@
 <title>Q&A | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .t-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
   .t-row:last-child { border-bottom:none; }
@@ -15,12 +15,12 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getMyEnrolledCourses, getCurriculum } from "/js/courses.js";
-  import { getThreadsForCourses, createThread } from "/js/community.js";
-  import { uploadFile } from "/js/storage.js";
-  import { escapeHtml, formatDateTime, showToast, setButtonLoading, getQueryParam } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getMyEnrolledCourses, getCurriculum } from "../js/courses.js";
+  import { getThreadsForCourses, createThread } from "../js/community.js";
+  import { uploadFile } from "../js/storage.js";
+  import { escapeHtml, formatDateTime, showToast, setButtonLoading, getQueryParam } from "../js/utils.js";
 
   const { profile, user } = await requireAuth({ allowedRoles: ["student"] });
   const content = renderAppShell({ role: "student", profile, pageTitle: "Q&A", activeHref: "questions.html" });
@@ -121,7 +121,7 @@
           </div>
           <div class="flex items-center gap-3">
             ${t.is_resolved ? '<span class="badge badge-success">Resolved</span>' : '<span class="badge badge-neutral">Open</span>'}
-            <a class="btn btn-outline btn-sm" href="/student/question-thread.html?id=${t.id}">Open</a>
+            <a class="btn btn-outline btn-sm" href="./question-thread.html?id=${t.id}">Open</a>
           </div>
         </div>
       `).join("");

@@ -6,15 +6,15 @@
 <title>Bookmarks | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getMyBookmarks } from "/js/learning.js";
-  import { escapeHtml } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getMyBookmarks } from "../js/learning.js";
+  import { escapeHtml } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["student"] });
   const content = renderAppShell({ role: "student", profile, pageTitle: "Bookmarks", activeHref: "bookmarks.html" });
@@ -29,7 +29,7 @@
     } else {
       const typeIcon = { video: "🎬", text: "📄", pdf: "📎", external: "🔗" };
       list.innerHTML = bookmarks.map((b) => `
-        <a href="/student/course.html?id=${b.course_id}&lesson=${b.lesson_id}" style="text-decoration:none; color:inherit; display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid var(--border-subtle);">
+        <a href="./course.html?id=${b.course_id}&lesson=${b.lesson_id}" style="text-decoration:none; color:inherit; display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid var(--border-subtle);">
           <span>${typeIcon[b.lessons?.lesson_type] || "📄"} ${escapeHtml(b.lessons?.title || "Lesson")}</span>
           <span class="text-secondary" style="font-size:0.85rem;">${escapeHtml(b.courses?.name || "")}</span>
         </a>

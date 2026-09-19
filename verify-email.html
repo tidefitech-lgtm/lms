@@ -6,7 +6,7 @@
 <title>Verify Your Email | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="./css/style.css" />
 </head>
 <body>
 
@@ -39,16 +39,16 @@
       </div>
       <button class="btn btn-outline btn-block" id="resend-btn">Resend Verification Email</button>
 
-      <p class="switch-link"><a href="/login.html">&larr; Back to log in</a></p>
+      <p class="switch-link"><a href="./login.html">&larr; Back to log in</a></p>
     </div>
   </div>
 </div>
 
 <script type="module">
-  import { resendVerificationEmail, getUserProfile, getFreshUser } from "/js/auth.js";
-  import { supabase } from "/js/supabase.js";
-  import { ROLE_HOME_PAGE } from "/js/config.js";
-  import { showToast, setButtonLoading, getQueryParam } from "/js/utils.js";
+  import { resendVerificationEmail, getUserProfile, getFreshUser } from "./js/auth.js";
+  import { supabase } from "./js/supabase.js";
+  import { ROLE_HOME_PAGE } from "./js/config.js";
+  import { showToast, setButtonLoading, getQueryParam } from "./js/utils.js";
 
   const emailFromQuery = getQueryParam("email") || "";
   document.getElementById("resend-email").value = emailFromQuery;
@@ -63,9 +63,9 @@
 
     const profile = await getUserProfile(user.id);
     if (profile?.role === "student" && profile.account_status !== "approved") {
-      window.location.href = "/student/pending-approval.html";
+      window.location.href = "./student/pending-approval.html";
     } else {
-      window.location.href = ROLE_HOME_PAGE[profile?.role] || "/student/dashboard.html";
+      window.location.href = ROLE_HOME_PAGE[profile?.role] || "./student/dashboard.html";
     }
     return true;
   }

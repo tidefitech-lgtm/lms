@@ -6,7 +6,7 @@
 <title>Attempt | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .timer-bar { position:sticky; top:0; z-index:10; background:var(--navy-900); color:#fff; padding:12px 20px; border-radius:var(--radius-md); display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
   .timer-bar.low-time { background:var(--danger); }
@@ -22,12 +22,12 @@
 </div>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { startAttempt, getAttempt, getAttemptQuestions, submitAttempt, getAssessment } from "/js/assessments.js";
-  import { escapeHtml, getQueryParam, showToast } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { startAttempt, getAttempt, getAttemptQuestions, submitAttempt, getAssessment } from "../js/assessments.js";
+  import { escapeHtml, getQueryParam, showToast } from "../js/utils.js";
 
   const assessmentId = getQueryParam("id");
-  if (!assessmentId) window.location.href = "/student/quizzes.html";
+  if (!assessmentId) window.location.href = "./quizzes.html";
 
   const { profile } = await requireAuth({ allowedRoles: ["student"] });
   const body = document.getElementById("page-body");
@@ -39,12 +39,12 @@
     attempt = await getAttempt(attemptId);
     questions = await getAttemptQuestions(assessmentId);
   } catch (err) {
-    body.innerHTML = `<div class="card"><div class="state-block"><p>${escapeHtml(err.message || "Couldn't start this attempt.")}</p><a href="/student/${assessment?.kind === "exam" ? "exams" : "quizzes"}.html" class="btn btn-outline">Back</a></div></div>`;
+    body.innerHTML = `<div class="card"><div class="state-block"><p>${escapeHtml(err.message || "Couldn't start this attempt.")}</p><a href="./${assessment?.kind === "exam" ? "exams" : "quizzes"}.html" class="btn btn-outline">Back</a></div></div>`;
     throw err;
   }
 
   if (attempt.status !== "in_progress") {
-    window.location.href = `/student/quiz-results.html?attempt=${attemptId}`;
+    window.location.href = `./quiz-results.html?attempt=${attemptId}`;
   }
 
   if (questions.length === 0) {
@@ -87,7 +87,7 @@
     if (timerInterval) clearInterval(timerInterval);
     try {
       await submitAttempt(attemptId, collectAnswers(), auto);
-      window.location.href = `/student/quiz-results.html?attempt=${attemptId}`;
+      window.location.href = `./quiz-results.html?attempt=${attemptId}`;
     } catch (err) {
       submitted = false;
       showToast(err.message || "Couldn't submit. Please try again.", "error");

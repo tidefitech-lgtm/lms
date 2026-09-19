@@ -6,7 +6,7 @@
 <title>Grade Assignment | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .sub-card { border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:16px; margin-bottom:16px; }
   .sub-head { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
@@ -15,18 +15,18 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getAssignment, getAssignmentSubmissions, gradeSubmission } from "/js/assignments.js";
-  import { getSignedUrl, fileNameFromPath } from "/js/storage.js";
-  import { showToast, setButtonLoading, escapeHtml, formatDateTime, getQueryParam } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getAssignment, getAssignmentSubmissions, gradeSubmission } from "../js/assignments.js";
+  import { getSignedUrl, fileNameFromPath } from "../js/storage.js";
+  import { showToast, setButtonLoading, escapeHtml, formatDateTime, getQueryParam } from "../js/utils.js";
 
   const assignmentId = getQueryParam("id");
-  if (!assignmentId) window.location.href = "/teacher/assignments.html";
+  if (!assignmentId) window.location.href = "./assignments.html";
 
   const { profile } = await requireAuth({ allowedRoles: ["teacher", "admin", "super_admin"] });
   const isStaff = profile.role !== "teacher";
-  const backHref = isStaff ? "/admin/assignments.html" : "/teacher/assignments.html";
+  const backHref = isStaff ? "../admin/assignments.html" : "./assignments.html";
 
   let assignment;
   try {

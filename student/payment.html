@@ -6,7 +6,7 @@
 <title>Payment | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 </head>
 <body style="background:var(--bg-page); min-height:100vh;">
 
@@ -20,19 +20,19 @@
     <div class="state-block"><div class="spinner"></div><p>Loading…</p></div>
   </div>
 
-  <p class="switch-link mt-4"><a href="/student/pending-approval.html" id="back-link">&larr; Back</a></p>
+  <p class="switch-link mt-4"><a href="./pending-approval.html" id="back-link">&larr; Back</a></p>
 </div>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { logout } from "/js/auth.js";
-  import { supabase } from "/js/supabase.js";
-  import { submitPaymentConfirmation, getMyLatestPaymentConfirmation } from "/js/payments.js";
-  import { setButtonLoading, setFieldError, clearFieldError, showToast, formatDate, formatDateTime } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { logout } from "../js/auth.js";
+  import { supabase } from "../js/supabase.js";
+  import { submitPaymentConfirmation, getMyLatestPaymentConfirmation } from "../js/payments.js";
+  import { setButtonLoading, setFieldError, clearFieldError, showToast, formatDate, formatDateTime } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["student"], allowPending: true });
   const body = document.getElementById("page-body");
-  document.getElementById("back-link").href = profile.account_status === "approved" ? "/student/dashboard.html" : "/student/pending-approval.html";
+  document.getElementById("back-link").href = profile.account_status === "approved" ? "./dashboard.html" : "./pending-approval.html";
 
   const latest = await getMyLatestPaymentConfirmation();
 
@@ -51,7 +51,7 @@
         <h2>Payment confirmed</h2>
         <p>Your payment was verified on ${formatDate(latest?.verified_at)}. Your course access is active.</p>
         <p><span class="badge badge-success">Student ID: ${profile.student_id || "—"}</span></p>
-        <a href="/student/dashboard.html" class="btn btn-primary mt-4">Go to Dashboard</a>
+        <a href="./dashboard.html" class="btn btn-primary mt-4">Go to Dashboard</a>
       </div>
     `;
   }
@@ -153,7 +153,7 @@
           studentNote: document.getElementById("studentNote").value.trim(),
         });
         showToast("Payment confirmation submitted. We'll review it shortly.", "success");
-        window.location.href = "/student/pending-approval.html";
+        window.location.href = "./pending-approval.html";
       } catch (err) {
         alertBox.innerHTML = `<div class="alert alert-danger">${err.message || "Couldn't submit right now. Please try again."}</div>`;
         setButtonLoading(submitBtn, false);

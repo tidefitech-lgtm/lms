@@ -6,7 +6,7 @@
 <title>Courses | TIDEF ITECH LMS Admin</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .course-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
   .course-row:last-child { border-bottom:none; }
@@ -17,10 +17,10 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getAllCourses, createCourse, setCourseStatus, getTeachers } from "/js/courses.js";
-  import { showToast, setButtonLoading, escapeHtml } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getAllCourses, createCourse, setCourseStatus, getTeachers } from "../js/courses.js";
+  import { showToast, setButtonLoading, escapeHtml } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
   const content = renderAppShell({ role: profile.role, profile, pageTitle: "Courses", activeHref: "courses.html" });
@@ -154,7 +154,7 @@
       </div>
       <div class="flex items-center gap-3">
         <span class="badge ${statusBadge}">${c.status}</span>
-        <a class="btn btn-outline btn-sm" href="/admin/course-editor.html?id=${c.id}">Manage</a>
+        <a class="btn btn-outline btn-sm" href="./course-editor.html?id=${c.id}">Manage</a>
         ${c.status !== "published"
           ? `<button class="btn btn-success btn-sm" data-action="publish">Publish</button>`
           : `<button class="btn btn-ghost btn-sm" data-action="unpublish">Unpublish</button>`}

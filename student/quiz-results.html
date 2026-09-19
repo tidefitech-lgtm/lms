@@ -6,7 +6,7 @@
 <title>Results | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .q-review { border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px; margin-bottom:12px; }
   .q-review.correct { border-color:var(--success); }
@@ -19,13 +19,13 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getAttempt, getAttemptReview, getAssessment } from "/js/assessments.js";
-  import { escapeHtml, getQueryParam, formatDateTime } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getAttempt, getAttemptReview, getAssessment } from "../js/assessments.js";
+  import { escapeHtml, getQueryParam, formatDateTime } from "../js/utils.js";
 
   const attemptId = getQueryParam("attempt");
-  if (!attemptId) window.location.href = "/student/quizzes.html";
+  if (!attemptId) window.location.href = "./quizzes.html";
 
   const { profile } = await requireAuth({ allowedRoles: ["student"] });
   const content = renderAppShell({ role: "student", profile, pageTitle: "Results", activeHref: "quizzes.html" });
@@ -36,7 +36,7 @@
     const attempt = await getAttempt(attemptId);
     const assessment = await getAssessment(attempt.assessment_id);
     const review = await getAttemptReview(attemptId);
-    const backHref = assessment.kind === "exam" ? "/student/exams.html" : "/student/quizzes.html";
+    const backHref = assessment.kind === "exam" ? "./exams.html" : "./quizzes.html";
 
     content.innerHTML = `
       <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="${backHref}">&larr; Back</a></p>

@@ -6,7 +6,7 @@
 <title>Projects | TIDEF ITECH LMS Admin</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .proj-card { border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:16px; margin-bottom:16px; }
   .proj-head { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
@@ -16,12 +16,12 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getAllCourses } from "/js/courses.js";
-  import { getProjectsForCourses, gradeProject } from "/js/projects.js";
-  import { getSignedUrl, fileNameFromPath } from "/js/storage.js";
-  import { showToast, setButtonLoading, escapeHtml, formatDateTime } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getAllCourses } from "../js/courses.js";
+  import { getProjectsForCourses, gradeProject } from "../js/projects.js";
+  import { getSignedUrl, fileNameFromPath } from "../js/storage.js";
+  import { showToast, setButtonLoading, escapeHtml, formatDateTime } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
   const content = renderAppShell({ role: profile.role, profile, pageTitle: "Projects", activeHref: "projects.html" });

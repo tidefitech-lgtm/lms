@@ -6,16 +6,16 @@
 <title>Dashboard | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getTeacherCourses } from "/js/courses.js";
-  import { supabase } from "/js/supabase.js";
-  import { escapeHtml } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getTeacherCourses } from "../js/courses.js";
+  import { supabase } from "../js/supabase.js";
+  import { escapeHtml } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["teacher"] });
   const content = renderAppShell({ role: "teacher", profile, pageTitle: "Dashboard", activeHref: "dashboard.html" });
@@ -31,7 +31,7 @@
     <div class="card">
       <div class="flex items-center justify-between mb-2">
         <h3 style="margin:0;">Assigned Courses</h3>
-        <a href="/teacher/courses.html" class="btn btn-outline btn-sm">View All</a>
+        <a href="./courses.html" class="btn btn-outline btn-sm">View All</a>
       </div>
       <div id="courses-preview"><div class="state-block"><div class="spinner"></div></div></div>
     </div>
@@ -46,7 +46,7 @@
     preview.innerHTML = courses.length === 0
       ? `<div class="state-block"><p>No courses assigned to you yet. An admin will assign you a course once it's set up.</p></div>`
       : courses.slice(0, 5).map((c) => `
-        <a href="/teacher/course-editor.html?id=${c.id}" style="text-decoration:none; color:inherit; display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border-subtle);">
+        <a href="./course-editor.html?id=${c.id}" style="text-decoration:none; color:inherit; display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border-subtle);">
           <span>${escapeHtml(c.name)}</span>
           <span class="badge ${c.status === "published" ? "badge-success" : "badge-neutral"}">${c.status}</span>
         </a>

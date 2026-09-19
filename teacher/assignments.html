@@ -6,7 +6,7 @@
 <title>Assignments | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .a-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
   .a-row:last-child { border-bottom:none; }
@@ -15,11 +15,11 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getTeacherCourses } from "/js/courses.js";
-  import { getAssignmentsForCourses, createAssignment } from "/js/assignments.js";
-  import { showToast, setButtonLoading, escapeHtml, formatDateTime } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getTeacherCourses } from "../js/courses.js";
+  import { getAssignmentsForCourses, createAssignment } from "../js/assignments.js";
+  import { showToast, setButtonLoading, escapeHtml, formatDateTime } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["teacher"] });
   const content = renderAppShell({ role: "teacher", profile, pageTitle: "Assignments", activeHref: "assignments.html" });
@@ -102,7 +102,7 @@
             <div style="font-weight:600; color:var(--navy-900);">${escapeHtml(a.title)}</div>
             <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(a.courses?.name || "")} · Due ${a.due_at ? formatDateTime(a.due_at) : "No deadline"} · ${a.max_marks} marks</div>
           </div>
-          <a class="btn btn-outline btn-sm" href="/teacher/assignment-grading.html?id=${a.id}">View Submissions</a>
+          <a class="btn btn-outline btn-sm" href="./assignment-grading.html?id=${a.id}">View Submissions</a>
         </div>
       `).join("");
     } catch (err) {

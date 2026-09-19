@@ -6,7 +6,7 @@
 <title>Community | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .post-card { border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:16px; margin-bottom:16px; background:var(--white); }
   .post-head { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
@@ -21,11 +21,11 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getPosts, createPost, toggleLike, getComments, createComment, deletePost, deleteComment } from "/js/community.js";
-  import { uploadFile, getSignedUrl } from "/js/storage.js";
-  import { escapeHtml, formatDateTime, getInitials, showToast, setButtonLoading } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getPosts, createPost, toggleLike, getComments, createComment, deletePost, deleteComment } from "../js/community.js";
+  import { uploadFile, getSignedUrl } from "../js/storage.js";
+  import { escapeHtml, formatDateTime, getInitials, showToast, setButtonLoading } from "../js/utils.js";
 
   const { profile, user } = await requireAuth({ allowedRoles: ["student"] });
   const content = renderAppShell({ role: "student", profile, pageTitle: "Community", activeHref: "community.html" });

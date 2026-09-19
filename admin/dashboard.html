@@ -6,14 +6,14 @@
 <title>Dashboard | TIDEF ITECH LMS Admin</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { supabase } from "/js/supabase.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { supabase } from "../js/supabase.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
   const content = renderAppShell({ role: profile.role, profile, pageTitle: "Dashboard", activeHref: "dashboard.html" });
@@ -29,7 +29,7 @@
     <div class="card mb-4">
       <div class="flex items-center justify-between mb-4">
         <h3 style="margin:0;">Payment Confirmations Waiting For Review</h3>
-        <a href="/admin/payment-verification.html" class="btn btn-outline btn-sm">Open Payment Verification</a>
+        <a href="./payment-verification.html" class="btn btn-outline btn-sm">Open Payment Verification</a>
       </div>
       <div id="payment-preview"><div class="state-block"><div class="spinner"></div></div></div>
     </div>
@@ -37,7 +37,7 @@
     <div class="card">
       <div class="flex items-center justify-between mb-4">
         <h3 style="margin:0;">Courses</h3>
-        <a href="/admin/courses.html" class="btn btn-outline btn-sm">Manage Courses</a>
+        <a href="./courses.html" class="btn btn-outline btn-sm">Manage Courses</a>
       </div>
       <div id="courses-summary"><div class="state-block"><div class="spinner"></div></div></div>
     </div>
@@ -46,7 +46,7 @@
   (async () => {
     const summary = document.getElementById("courses-summary");
     try {
-      const { getAllCourses } = await import("/js/courses.js");
+      const { getAllCourses } = await import("../js/courses.js");
       const courses = await getAllCourses();
       const published = courses.filter((c) => c.status === "published").length;
       const draft = courses.filter((c) => c.status === "draft").length;

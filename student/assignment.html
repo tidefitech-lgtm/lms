@@ -6,19 +6,19 @@
 <title>Assignment | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getAssignment, getMySubmission, submitAssignment } from "/js/assignments.js";
-  import { uploadFile, getSignedUrl, fileNameFromPath } from "/js/storage.js";
-  import { escapeHtml, formatDateTime, getQueryParam, showToast, setButtonLoading } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getAssignment, getMySubmission, submitAssignment } from "../js/assignments.js";
+  import { uploadFile, getSignedUrl, fileNameFromPath } from "../js/storage.js";
+  import { escapeHtml, formatDateTime, getQueryParam, showToast, setButtonLoading } from "../js/utils.js";
 
   const assignmentId = getQueryParam("id");
-  if (!assignmentId) window.location.href = "/student/assignments.html";
+  if (!assignmentId) window.location.href = "./assignments.html";
 
   const { profile, user } = await requireAuth({ allowedRoles: ["student"] });
   const content = renderAppShell({ role: "student", profile, pageTitle: "Assignment", activeHref: "assignments.html" });
@@ -30,7 +30,7 @@
     assignment = await getAssignment(assignmentId);
     mySubmission = await getMySubmission(assignmentId);
   } catch (err) {
-    content.innerHTML = `<div class="card"><div class="state-block"><p>Assignment not found or you don't have access to it.</p><a href="/student/assignments.html" class="btn btn-outline">Back</a></div></div>`;
+    content.innerHTML = `<div class="card"><div class="state-block"><p>Assignment not found or you don't have access to it.</p><a href="./assignments.html" class="btn btn-outline">Back</a></div></div>`;
     throw err;
   }
 
@@ -41,7 +41,7 @@
 
   function render() {
     content.innerHTML = `
-      <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="/student/assignments.html">&larr; Assignments</a></p>
+      <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="./assignments.html">&larr; Assignments</a></p>
 
       <div class="card mb-4">
         <h2 style="margin-bottom:4px;">${escapeHtml(assignment.title)}</h2>

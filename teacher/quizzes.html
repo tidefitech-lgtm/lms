@@ -6,7 +6,7 @@
 <title>Quizzes & Exams | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .a-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
   .a-row:last-child { border-bottom:none; }
@@ -18,11 +18,11 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getTeacherCourses } from "/js/courses.js";
-  import { getAssessmentsForCourses, createAssessment } from "/js/assessments.js";
-  import { showToast, setButtonLoading, escapeHtml, formatDateTime } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getTeacherCourses } from "../js/courses.js";
+  import { getAssessmentsForCourses, createAssessment } from "../js/assessments.js";
+  import { showToast, setButtonLoading, escapeHtml, formatDateTime } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["teacher"] });
   const content = renderAppShell({ role: "teacher", profile, pageTitle: "Quizzes & Exams", activeHref: "quizzes.html" });
@@ -127,7 +127,7 @@
             <div style="font-weight:600; color:var(--navy-900);">${escapeHtml(a.title)}</div>
             <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(a.courses?.name || "")} · ${a.time_limit_minutes ? a.time_limit_minutes + " min" : "No time limit"} · Pass: ${a.passing_score}% · ${a.max_attempts} attempt(s)</div>
           </div>
-          <a class="btn btn-outline btn-sm" href="/teacher/quiz-editor.html?id=${a.id}">Manage</a>
+          <a class="btn btn-outline btn-sm" href="./quiz-editor.html?id=${a.id}">Manage</a>
         </div>
       `).join("");
     } catch (err) {

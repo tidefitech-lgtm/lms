@@ -6,7 +6,7 @@
 <title>Question | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .reply-card { border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:14px; margin-bottom:12px; }
   .reply-card.accepted { border-color:var(--success); background:var(--success-bg); }
@@ -15,17 +15,17 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getThread, getReplies, createReply, acceptReply, deleteThread, deleteReply } from "/js/community.js";
-  import { uploadFile, getSignedUrl, fileNameFromPath } from "/js/storage.js";
-  import { escapeHtml, formatDateTime, getQueryParam, showToast, setButtonLoading } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getThread, getReplies, createReply, acceptReply, deleteThread, deleteReply } from "../js/community.js";
+  import { uploadFile, getSignedUrl, fileNameFromPath } from "../js/storage.js";
+  import { escapeHtml, formatDateTime, getQueryParam, showToast, setButtonLoading } from "../js/utils.js";
 
   const threadId = getQueryParam("id");
-  if (!threadId) window.location.href = "/student/questions.html";
+  if (!threadId) window.location.href = "../student/questions.html";
 
   const { profile, user } = await requireAuth({ allowedRoles: ["student", "teacher", "admin", "super_admin"] });
-  const backHref = profile.role === "student" ? "/student/questions.html" : profile.role === "teacher" ? "/teacher/questions.html" : "/admin/questions.html";
+  const backHref = profile.role === "student" ? "../student/questions.html" : profile.role === "teacher" ? "./questions.html" : "../admin/questions.html";
   const isModerator = ["admin", "super_admin", "teacher"].includes(profile.role);
 
   const content = renderAppShell({ role: profile.role, profile, pageTitle: "Question", activeHref: "questions.html" });

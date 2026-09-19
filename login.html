@@ -7,7 +7,7 @@
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="./css/style.css" />
 </head>
 <body>
 
@@ -45,22 +45,22 @@
         <div class="field">
           <label for="password">Password</label>
           <input class="input" type="password" id="password" name="password" autocomplete="current-password" required />
-          <div class="hint" style="text-align:right;"><a href="/forgot-password.html" style="color:var(--navy-800); font-weight:600;">Forgot password?</a></div>
+          <div class="hint" style="text-align:right;"><a href="./forgot-password.html" style="color:var(--navy-800); font-weight:600;">Forgot password?</a></div>
         </div>
         <button type="submit" class="btn btn-primary btn-block" id="login-btn">Log In</button>
       </form>
 
-      <p class="switch-link">Don't have an account? <a href="/register.html">Register as a student</a></p>
+      <p class="switch-link">Don't have an account? <a href="./register.html">Register as a student</a></p>
       <p class="switch-link"><a href="https://www.tidefitech.com">&larr; Back to TIDEF ITECH website</a></p>
     </div>
   </div>
 </div>
 
 <script type="module">
-  import { login, getUserProfile } from "/js/auth.js";
-  import { ROLE_HOME_PAGE } from "/js/config.js";
-  import { friendlyAuthError, setButtonLoading, clearFieldError } from "/js/utils.js";
-  import { redirectIfAuthenticated } from "/js/guards.js";
+  import { login, getUserProfile } from "./js/auth.js";
+  import { ROLE_HOME_PAGE } from "./js/config.js";
+  import { friendlyAuthError, setButtonLoading, clearFieldError } from "./js/utils.js";
+  import { redirectIfAuthenticated } from "./js/guards.js";
 
   redirectIfAuthenticated();
 
@@ -81,18 +81,18 @@
       const user = await login(emailEl.value.trim(), passwordEl.value);
 
       if (!user.email_confirmed_at) {
-        window.location.href = `/verify-email.html?email=${encodeURIComponent(user.email)}`;
+        window.location.href = `./verify-email.html?email=${encodeURIComponent(user.email)}`;
         return;
       }
       const profile = await getUserProfile(user.id);
       if (profile?.role === "student" && profile.account_status !== "approved") {
-        window.location.href = "/student/pending-approval.html";
+        window.location.href = "./student/pending-approval.html";
         return;
       }
-      window.location.href = ROLE_HOME_PAGE[profile?.role] || "/student/dashboard.html";
+      window.location.href = ROLE_HOME_PAGE[profile?.role] || "./student/dashboard.html";
     } catch (err) {
       if (err?.message?.toLowerCase().includes("email not confirmed")) {
-        window.location.href = `/verify-email.html?email=${encodeURIComponent(emailEl.value.trim())}`;
+        window.location.href = `./verify-email.html?email=${encodeURIComponent(emailEl.value.trim())}`;
         return;
       }
       alertBox.innerHTML = `<div class="alert alert-danger">${friendlyAuthError(err)}</div>`;

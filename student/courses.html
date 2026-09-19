@@ -6,7 +6,7 @@
 <title>My Courses | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .course-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:20px; }
   .course-card { border:1px solid var(--border-subtle); border-radius:var(--radius-lg); overflow:hidden; background:var(--white); display:flex; flex-direction:column; }
@@ -17,10 +17,10 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getMyEnrolledCourses } from "/js/courses.js";
-  import { escapeHtml } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getMyEnrolledCourses } from "../js/courses.js";
+  import { escapeHtml } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["student"] });
   const content = renderAppShell({ role: "student", profile, pageTitle: "My Courses", activeHref: "courses.html" });
@@ -34,7 +34,7 @@
       grid.innerHTML = `<div class="card" style="grid-column:1/-1;"><div class="state-block"><p>You're not enrolled in any courses yet. Once TIDEF ITECH enrolls you, they'll appear here.</p></div></div>`;
     } else {
       grid.innerHTML = enrollments.map((e) => `
-        <a class="course-card" href="/student/course.html?id=${e.courses.id}" style="text-decoration:none;">
+        <a class="course-card" href="./course.html?id=${e.courses.id}" style="text-decoration:none;">
           <div class="thumb">${escapeHtml(e.courses.name)}</div>
           <div class="body">
             <span class="badge ${e.status === "completed" ? "badge-success" : "badge-info"}">${e.status}</span>

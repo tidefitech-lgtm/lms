@@ -6,7 +6,7 @@
 <title>Course | TIDEF ITECH LMS</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .learn-shell { display:grid; grid-template-columns: 300px 1fr; gap:24px; align-items:start; }
   .learn-sidebar { position:sticky; top:16px; background:var(--white); border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:16px; max-height:calc(100vh - 120px); overflow-y:auto; }
@@ -30,17 +30,17 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getCurriculum, getMyEnrolledCourses } from "/js/courses.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getCurriculum, getMyEnrolledCourses } from "../js/courses.js";
   import {
     getProgressForCourse, recordVideoProgress, markLessonComplete, computeCourseProgress,
     getNote, saveNote, isBookmarked, toggleBookmark, extractYouTubeId,
-  } from "/js/learning.js";
-  import { escapeHtml, getQueryParam, showToast, setButtonLoading } from "/js/utils.js";
+  } from "../js/learning.js";
+  import { escapeHtml, getQueryParam, showToast, setButtonLoading } from "../js/utils.js";
 
   const courseId = getQueryParam("id");
-  if (!courseId) window.location.href = "/student/courses.html";
+  if (!courseId) window.location.href = "./courses.html";
 
   const { profile } = await requireAuth({ allowedRoles: ["student"] });
   const content = renderAppShell({ role: "student", profile, pageTitle: "Course", activeHref: "courses.html" });
@@ -50,7 +50,7 @@
   const enrolled = await getMyEnrolledCourses();
   const match = enrolled.find((e) => e.courses.id === courseId);
   if (!match) {
-    content.innerHTML = `<div class="card"><div class="state-block"><p>You're not enrolled in this course.</p><a href="/student/courses.html" class="btn btn-outline">Back to My Courses</a></div></div>`;
+    content.innerHTML = `<div class="card"><div class="state-block"><p>You're not enrolled in this course.</p><a href="./courses.html" class="btn btn-outline">Back to My Courses</a></div></div>`;
     throw new Error("not enrolled");
   }
   const course = match.courses;
@@ -61,7 +61,7 @@
 
   if (allLessons.length === 0) {
     content.innerHTML = `
-      <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="/student/courses.html">&larr; My Courses</a></p>
+      <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="./courses.html">&larr; My Courses</a></p>
       <div class="card"><div class="state-block"><p>Your teacher hasn't added any lessons to <strong>${escapeHtml(course.name)}</strong> yet — check back soon.</p></div></div>
     `;
     throw new Error("no lessons");
@@ -74,7 +74,7 @@
   let ytInterval = null;
 
   content.innerHTML = `
-    <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="/student/courses.html">&larr; My Courses</a></p>
+    <p class="switch-link" style="text-align:left; margin-bottom:12px;"><a href="./courses.html">&larr; My Courses</a></p>
     <div class="card mb-4">
       <div class="flex items-center justify-between mb-2" style="flex-wrap:wrap; gap:8px;">
         <h2 style="margin:0;">${escapeHtml(course.name)}</h2>
@@ -245,7 +245,7 @@
       <div class="card mb-4">
         <div class="flex items-center justify-between" style="flex-wrap:wrap; gap:8px;">
           <span>Stuck on this lesson?</span>
-          <a class="btn btn-outline btn-sm" href="/student/questions.html?course=${courseId}&lesson=${lesson.id}">❔ Ask a Question</a>
+          <a class="btn btn-outline btn-sm" href="./questions.html?course=${courseId}&lesson=${lesson.id}">❔ Ask a Question</a>
         </div>
       </div>
 

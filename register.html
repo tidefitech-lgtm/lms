@@ -7,7 +7,7 @@
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="./css/style.css" />
 <style>
   .auth-form-wrap.wide { max-width: 520px; }
 </style>
@@ -99,15 +99,15 @@
         <button type="submit" class="btn btn-primary btn-block" id="register-btn">Create Account</button>
       </form>
 
-      <p class="switch-link">Already have an account? <a href="/login.html">Log in</a></p>
+      <p class="switch-link">Already have an account? <a href="./login.html">Log in</a></p>
     </div>
   </div>
 </div>
 
 <script type="module">
-  import { registerStudent } from "/js/auth.js";
-  import { friendlyAuthError, setButtonLoading, setFieldError, clearFieldError, showToast } from "/js/utils.js";
-  import { supabase } from "/js/supabase.js";
+  import { registerStudent } from "./js/auth.js";
+  import { friendlyAuthError, setButtonLoading, setFieldError, clearFieldError, showToast } from "./js/utils.js";
+  import { supabase } from "./js/supabase.js";
 
   const form = document.getElementById("register-form");
   const alertBox = document.getElementById("form-alert");
@@ -170,7 +170,7 @@
         courseId: courseSelect.value || null,
       });
       showToast("Account created! Check your email to verify.", "success");
-      window.location.href = `/verify-email.html?email=${encodeURIComponent(email.value.trim())}`;
+      window.location.href = `./verify-email.html?email=${encodeURIComponent(email.value.trim())}`;
     } catch (err) {
       alertBox.innerHTML = `<div class="alert alert-danger">${friendlyAuthError(err)}</div>`;
       setButtonLoading(registerBtn, false);

@@ -8,15 +8,16 @@
 // =========================================================
 
 import { onAuthReady, logout } from "./auth.js";
-import { ROLES, ROLE_HOME_PAGE } from "./config.js";
+import { appPath, ROLES, ROLE_HOME_PAGE } from "./config.js";
 
-const LOGIN_PAGE = "/login.html";
+const LOGIN_PAGE = appPath("login.html");
 
 function showGuardLoading() {
   const el = document.createElement("div");
   el.id = "guard-loading";
   el.className = "state-block";
-  el.style.cssText = "position:fixed;inset:0;background:#f7f8fb;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:9999;";
+  el.style.cssText =
+    "position:fixed;inset:0;background:#f7f8fb;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:9999;";
   el.innerHTML = `<div class="spinner"></div><p style="margin-top:16px;">Loading your dashboard…</p>`;
   document.body.appendChild(el);
 }
@@ -30,7 +31,10 @@ function hideGuardLoading() {
  * (unless allowPending is set), and whose role is in allowedRoles.
  * Resolves with { user, profile } once checks pass; otherwise redirects.
  */
-export function requireAuth({ allowedRoles = null, allowPending = false } = {}) {
+export function requireAuth({
+  allowedRoles = null,
+  allowPending = false,
+} = {}) {
   showGuardLoading();
   return new Promise((resolve) => {
     const unsubscribe = onAuthReady(({ user, profile }) => {
@@ -42,7 +46,7 @@ export function requireAuth({ allowedRoles = null, allowPending = false } = {}) 
       }
 
       if (!user.email_confirmed_at) {
-        window.location.href = `/verify-email.html?email=${encodeURIComponent(user.email)}`;
+        window.location.href = `${appPath("verify-email.html")}?email=${encodeURIComponent(user.email)}`;
         return;
       }
 
@@ -56,7 +60,7 @@ export function requireAuth({ allowedRoles = null, allowPending = false } = {}) 
         !allowPending &&
         profile.account_status !== "approved"
       ) {
-        window.location.href = "/student/pending-approval.html";
+        window.location.href = appPath("student/pending-approval.html");
         return;
       }
 
@@ -76,7 +80,8 @@ export function redirectIfAuthenticated() {
   const unsubscribe = onAuthReady(({ user, profile }) => {
     unsubscribe();
     if (user && profile) {
-      window.location.href = ROLE_HOME_PAGE[profile.role] || "/student/dashboard.html";
+      window.location.href =
+        ROLE_HOME_PAGE[profile.role] || appPath("student/dashboard.html");
     }
   });
 }

@@ -6,7 +6,7 @@
 <title>Teachers | TIDEF ITECH LMS Admin</title>
 <link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="../css/style.css" />
 <style>
   .t-row { padding:16px 0; border-bottom:1px solid var(--border-subtle); }
   .t-row:last-child { border-bottom:none; }
@@ -16,16 +16,16 @@
 <body>
 
 <script type="module">
-  import { requireAuth } from "/js/guards.js";
-  import { renderAppShell } from "/js/components.js";
-  import { getTeachersWithCourses } from "/js/admin.js";
-  import { escapeHtml, formatDate } from "/js/utils.js";
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getTeachersWithCourses } from "../js/admin.js";
+  import { escapeHtml, formatDate } from "../js/utils.js";
 
   const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
   const content = renderAppShell({ role: profile.role, profile, pageTitle: "Teachers", activeHref: "teachers.html" });
 
   content.innerHTML = `
-    <div class="alert alert-info mb-4">To make someone a teacher, go to <a href="/admin/users.html">Users & Roles</a> and change their role (Super Admin only).</div>
+    <div class="alert alert-info mb-4">To make someone a teacher, go to <a href="./users.html">Users & Roles</a> and change their role (Super Admin only).</div>
     <div class="card"><div id="list"><div class="state-block"><div class="spinner"></div></div></div></div>
   `;
 
