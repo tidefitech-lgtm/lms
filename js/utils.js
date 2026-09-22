@@ -19,15 +19,21 @@ export function showToast(message, type = "info", duration = 4500) {
 }
 
 /** Toggle a button between idle and loading state. */
-export function setButtonLoading(button, isLoading, loadingText = "Please wait…") {
+export function setButtonLoading(
+  button,
+  isLoading,
+  loadingText = "Please wait…",
+) {
   if (!button) return;
   if (isLoading) {
-    button.dataset.originalText = button.dataset.originalText || button.innerHTML;
+    button.dataset.originalText =
+      button.dataset.originalText || button.innerHTML;
     button.disabled = true;
     button.innerHTML = `<span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> ${loadingText}`;
   } else {
     button.disabled = false;
-    if (button.dataset.originalText) button.innerHTML = button.dataset.originalText;
+    if (button.dataset.originalText)
+      button.innerHTML = button.dataset.originalText;
   }
 }
 
@@ -87,7 +93,8 @@ export function friendlyAuthError(error) {
 /** Format a Firestore Timestamp (or Date) into a readable string. */
 export function formatDate(value, opts = {}) {
   if (!value) return "—";
-  const date = typeof value.toDate === "function" ? value.toDate() : new Date(value);
+  const date =
+    typeof value.toDate === "function" ? value.toDate() : new Date(value);
   return date.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
@@ -98,7 +105,8 @@ export function formatDate(value, opts = {}) {
 
 export function formatDateTime(value) {
   if (!value) return "—";
-  const date = typeof value.toDate === "function" ? value.toDate() : new Date(value);
+  const date =
+    typeof value.toDate === "function" ? value.toDate() : new Date(value);
   return date.toLocaleString("en-GB", {
     day: "numeric",
     month: "short",

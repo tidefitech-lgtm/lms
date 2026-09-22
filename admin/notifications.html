@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notifications | TIDEF ITECH LMS Admin</title>
+    <link
+      rel="icon"
+      href="https://www.tidefitech.com/img/Capture-removebg-preview.png"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body>
+    <script type="module">
+      import { requireAuth } from "../js/guards.js";
+      import { renderAppShell } from "../js/components.js";
+      import { supabase } from "../js/supabase.js";
+      import {
+        escapeHtml,
+        formatDateTime,
+        setButtonLoading,
+      } from "../js/utils.js";
+
+      const { profile } = await requireAuth({
+        allowedRoles: ["admin", "super_admin"],
+      });
+      const content = renderAppShell({
+        role: profile.role,
+        profile,
+        pageTitle: "Notifications",
+        activeHref: "notifications.html",
+      });
+
+      content.innerHTML = `
+    <div class="card mb-4">
+      <h3>Send notification to students</h3>
+      <div id="send-alert"></div>
+      <form id="notification-form">
+        <div class="field">
+          <label for="title">Title</label>
+          <input class="input" id="title" required maxlength="160" />
+        </div>
+        <div class="field">
+          <label for="body">Message</label>
+          <textarea class="input" id="body" rows="4" maxlength="2000"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" id="send-btn">Send to all students</button>
+      </form>
+    </div>
+    <div class="card">
+      <h3>Recent notifications</h3>
+      <div id="notification-list"><div class="state-block"><div class="spinner"></div></div></div>
+    </div>
+  `;
+
+      const list = document.getElementById("notification-list");
+
+      async function loadNotifications() {
+        const { data, error } = await supabase
+          .from("notifications")
+          .select(
+            "id, title, body, read, created_at, user_id, profiles!user_id(full_name)",
+          )
+          .order("created_at", { ascending: false })
+          .limit(100);
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          list.innerHTML = `<div class="state-block"><p>No notifications have been sent yet.</p></div>`;
+          return;
+        }
+        list.innerHTML = data
+          .map(
+            (notification) => `
+      <div style="padding:12px 0; border-bottom:1px solid var(--border-subtle);">
+        <div class="flex items-center justify-between" style="gap:16px; flex-wrap:wrap;">
+          <strong>${escapeHtml(notification.title)}</strong>
+          <span class="text-secondary">${formatDateTime(notification.created_at)}</span>
+        </div>
+        <div class="text-secondary">To: ${escapeHtml(notification.profiles?.full_name || "Student")}</div>
+        ${notification.body ? `<p style="margin:4px 0 0; white-space:pre-wrap;">${escapeHtml(notification.body)}</p>` : ""}
+      </div>
+    `,
+          )
+          .join("");
+      }
+
+      document
+        .getElementById("notification-form")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const button = document.getElementById("send-btn");
+          const alertBox = document.getElementById("send-alert");
+          alertBox.innerHTML = "";
+          setButtonLoading(button, true, "Sending...");
+          try {
+            const { data: students, error: studentsError } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("role", "student");
+            if (studentsError) throw studentsError;
+            const title = document.getElementById("title").value.trim();
+            const body = document.getElementById("body").value.trim() || null;
+            const { error } = await supabase
+              .from("notifications")
+              .insert(
+                (students || []).map((student) => ({
+                  user_id: student.id,
+                  title,
+                  body,
+                })),
+              );
+            if (error) throw error;
+            document.getElementById("notification-form").reset();
+            alertBox.innerHTML = `<div class="alert alert-success">Notification sent.</div>`;
+            await loadNotifications();
+          } catch (error) {
+            alertBox.innerHTML = `<div class="alert alert-danger">Couldn't send notification.</div>`;
+          } finally {
+            setButtonLoading(button, false);
+          }
+        });
+
+      try {
+        await loadNotifications();
+      } catch (error) {
+        list.innerHTML = `<div class="alert alert-danger">Couldn't load notifications.</div>`;
+      }
+    </script>
+  </body>
+</html>

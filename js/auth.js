@@ -11,10 +11,6 @@
 
 import { supabase } from "./supabase.js";
 
-function appUrl(path) {
-  return new URL(`./${path}`, document.baseURI).href;
-}
-
 /**
  * Register a new student account.
  * @param {Object} data - fullName, email, phone, password, dob, gender, address, courseId
@@ -23,20 +19,21 @@ export async function registerStudent(data) {
   const { email, password, fullName, phone, dob, gender, address, courseId } =
     data;
 
+  const options = {
+    data: {
+      full_name: fullName,
+      email,
+      phone: phone || null,
+      dob: dob || null,
+      gender: gender || null,
+      address: address || null,
+      interested_course_id: courseId || null,
+    },
+  };
   const { data: signUpData, error } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      data: {
-        full_name: fullName,
-        phone: phone || null,
-        dob: dob || null,
-        gender: gender || null,
-        address: address || null,
-        interested_course_id: courseId || null,
-      },
-      emailRedirectTo: appUrl("verify-email.html"),
-    },
+    options,
   });
 
   if (error) throw error;
@@ -59,14 +56,30 @@ export async function logout() {
   if (error) throw error;
 }
 
-/** Resend the signup confirmation email. */
-export async function resendVerificationEmail(email) {
-  const { error } = await supabase.auth.resend({
-    type: "signup",
+/** Resend the signup email OTP. */
+export async function resendSignupOtp(email) {
+  const { error } = await supabase.auth.resend({ type: "signup", email });
+  if (error) throw error;
+}
+
+/** Verify a signup email OTP. */
+export async function verifySignupOtp(email, token) {
+  const { data, error } = await supabase.auth.verifyOtp({
     email,
-    options: { emailRedirectTo: appUrl("verify-email.html") },
+    token,
+    type: "signup",
   });
   if (error) throw error;
+  return data.user;
+}
+
+/** Check whether an email is already registered before signup. */
+export async function emailExists(email) {
+  const { data, error } = await supabase.rpc("email_exists", {
+    p_email: email,
+  });
+  if (error) throw error;
+  return data === true;
 }
 
 /** Send a password-reset email; landing page is reset-password.html. */
@@ -98,7 +111,7 @@ export async function getUserProfile(uid) {
  * Ask the Supabase server directly whether we currently have a
  * signed-in, email-confirmed user. Unlike getSession() (which reads the
  * local token), getUser() always round-trips to the server, so it's the
- * right call right after someone clicks an email confirmation link.
+ * right call after an email OTP has created a session.
  */
 export async function getFreshUser() {
   const { data, error } = await supabase.auth.getUser();

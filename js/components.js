@@ -46,6 +46,12 @@ const NAV_BY_ROLE = {
     { section: "Students" },
     { href: "../admin/students.html", icon: "🧑‍🎓", label: "Students" },
     {
+      href: "../admin/student-progress.html",
+      icon: "📈",
+      label: "Student Progress",
+      superAdminOnly: true,
+    },
+    {
       href: "../admin/payment-verification.html",
       icon: "💳",
       label: "Payment Verification",
@@ -60,7 +66,7 @@ const NAV_BY_ROLE = {
     { section: "System" },
     { href: "../admin/community.html", icon: "💬", label: "Community" },
     { href: "../admin/questions.html", icon: "❔", label: "Q&A" },
-    { href: "../admin/announcements.html", icon: "📢", label: "Announcements" },
+    { href: "../admin/notifications.html", icon: "🔔", label: "Notifications" },
     { href: "../admin/users.html", icon: "👥", label: "Users & Roles" },
     { href: "../admin/activity-logs.html", icon: "🗂️", label: "Activity Logs" },
     { href: "../admin/settings.html", icon: "⚙️", label: "Settings" },
@@ -72,6 +78,7 @@ NAV_BY_ROLE[ROLES.SUPER_ADMIN] = NAV_BY_ROLE[ROLES.ADMIN];
 export function renderAppShell({ role, profile, pageTitle, activeHref }) {
   const items = NAV_BY_ROLE[role] || [];
   const navHtml = items
+    .filter((item) => !item.superAdminOnly || role === ROLES.SUPER_ADMIN)
     .map((item) => {
       if (item.section) {
         return `<div class="nav-section-label">${item.section}</div>`;

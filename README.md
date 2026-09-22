@@ -41,21 +41,34 @@ dashboard: `npm install -g supabase`, `supabase login`, `supabase link
 --project-ref your-project-ref`, then `supabase db push` from this
 folder — it picks up everything under `supabase/migrations/` automatically.)
 
-## 4. Check your email settings
+## 4. Configure OTP verification
 
 1. **Authentication → Providers → Email** — make sure **Confirm email**
-   is switched **on** (it is by default). This is what makes
-   `verify-email.html` necessary.
-2. **Authentication → URL Configuration** — set:
+  is switched **on**. First click **Set up SMTP** on the Email Templates
+  page and configure a real SMTP provider such as Resend, Brevo, SendGrid,
+  or Gmail SMTP. Supabase's default email service does not allow custom
+  templates.
+2. After SMTP is configured, open **Authentication → Email Templates → Confirm
+  signup** and replace the template with one that includes `{{ .Token }}`.
+  Remove every `{{ .ConfirmationURL }}` link from this template. For example:
+
+  ```html
+  <h2>Confirm your TIDEF ITECH account</h2>
+  <p>Your verification code is:</p>
+  <p style="font-size:32px;font-weight:700;letter-spacing:6px;">{{ .Token }}</p>
+  <p>This code expires soon. If you did not create an account, ignore this email.</p>
+  ```
+
+  The registration page verifies this code with `verifyOtp`.
+3. **Authentication → URL Configuration** — set:
    - **Site URL**: wherever you'll host this (e.g. `https://lms.tidefitech.com`,
      or `http://localhost:3000` while testing locally)
    - **Redirect URLs**: add both `/verify-email.html` and
      `/reset-password.html` under that same origin, since those are the
-     pages Supabase redirects to after someone clicks a confirmation or
-     reset-password email link.
+     pages Supabase redirects to after password-reset email links. Signup
+     verification stays on `verify-email.html` and uses an OTP.
 
-Supabase's own default email templates work fine to start with — you can
-customize them later under **Authentication → Email Templates**.
+Password-reset email templates can continue using Supabase's default link.
 
 ## 5. Run it locally
 
@@ -91,9 +104,9 @@ also done via the Table Editor.
 ## 7. What's in this phase
 
 ```
-login.html                     Email/password login
+login.html                     Email/phone + password login
 register.html                  Student self-registration (role fixed to "student")
-verify-email.html              Handles the Supabase email-confirmation redirect
+verify-email.html              Verifies signup OTPs sent by email
 reset-password.html            Handles the Supabase password-reset redirect
 forgot-password.html           Requests a password reset email
 student/pending-approval.html  Shown to students whose account isn't approved yet
@@ -165,7 +178,7 @@ touching `payment_status`, `account_status`, `enrollment_status`, or
 `student_id` is still fully in force. Phase 2 only opens one narrow,
 specific exception: a student may move their own `payment_status` from
 `not_submitted`/`rejected` to `pending_verification` — i.e. they can
-*ask* for review, never grant it. Only the two SECURITY DEFINER admin
+_ask_ for review, never grant it. Only the two SECURITY DEFINER admin
 functions above can move a payment to `confirmed`, and both check the
 caller's role themselves before doing anything, independent of RLS.
 
@@ -206,16 +219,16 @@ to `courses`, plus new `modules`, `lessons`, and `enrollments` tables.
   data instead of a placeholder.
 
 **Design decision worth knowing about:** the spec says "admins and
-authorized teachers" can create courses. I implemented it as *admin
+authorized teachers" can create courses. I implemented it as _admin
 creates and assigns a teacher; the teacher then manages that course's
-content* — matching how the rest of the admin-approval workflow works,
+content_ — matching how the rest of the admin-approval workflow works,
 and how the sidebar/pages are already wired. If you'd rather let
 teachers create their own courses outright, that's a small RLS + UI
 change — say so and I'll adjust it before Phase 4.
 
 **Security note:** curriculum protection follows the spec's public
 course page rule (section 41) precisely — a published course's module
-*titles* are visible to anyone (curriculum preview), but full lesson
+_titles_ are visible to anyone (curriculum preview), but full lesson
 content is only visible to staff, the assigned teacher, or a student
 with an active enrollment in that specific course. This is enforced by
 RLS on the `lessons` table, not by hiding links in the UI.
@@ -328,6 +341,7 @@ buckets (`assignment-files`, `submission-files`, `project-files`).
   placeholders.
 
 **Design decisions worth knowing about:**
+
 - A late submission isn't blocked server-side — the UI just flags it as
   "Overdue" if there's no submission past the due date. Say so if you'd
   rather hard-lock submissions after the deadline.
@@ -391,7 +405,7 @@ is detected as past its time limit and auto-closed at a zero score
 before a new attempt is allowed — no background cron job needed.
 
 **A design call worth knowing about:** multi-answer questions are
-graded all-or-nothing — a student needs to select the *exact* correct
+graded all-or-nothing — a student needs to select the _exact_ correct
 set to earn any points, no partial credit for getting some right. Say
 so if you'd rather award partial credit per correct option selected.
 
@@ -551,6 +565,7 @@ adds what was genuinely missing: an audit trail and a settings table.
 
 Phases 1–9 are built. What's left from the original 60-section spec,
 roughly in the order I'd tackle it:
+
 - **Attendance** (spec section 28) — not yet built.
 - **Learning streaks & badges** (sections 38–39) — not yet built.
 - **Search across the LMS** (section 34) beyond what each page already

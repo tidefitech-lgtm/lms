@@ -1,181 +1,277 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Student Registration | TIDEF ITECH LMS</title>
-<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="./css/style.css" />
-<style>
-  .auth-form-wrap.wide { max-width: 520px; }
-</style>
-</head>
-<body>
-
-<div class="auth-shell">
-  <div class="auth-visual">
-    <div class="brand">
-      <img src="https://www.tidefitech.com/img/Capture-removebg-preview.png" alt="TIDEF ITECH" />
-      <span class="brand-name">TIDEF ITECH LMS</span>
-    </div>
-    <div>
-      <h2>Start your journey into tech with TIDEF ITECH.</h2>
-      <p>Create your student account, verify your email, then complete payment with our team to unlock your course.</p>
-      <ul class="auth-points">
-        <li>1️⃣ Register and verify your email</li>
-        <li>2️⃣ Pay TIDEF ITECH directly (not through this site)</li>
-        <li>3️⃣ Tell us you've paid — we'll confirm and unlock your course</li>
-      </ul>
-    </div>
-    <p style="font-size:0.82rem;">© 2026 TIDEF ITECH — Makurdi, Benue State</p>
-  </div>
-
-  <div class="auth-form-side">
-    <div class="auth-form-wrap wide">
-      <div class="eyebrow">JOIN TIDEF ITECH</div>
-      <h1>Create your student account</h1>
-      <p class="sub">It only takes a couple of minutes.</p>
-
-      <div id="form-alert"></div>
-
-      <form id="register-form" novalidate>
-        <div class="form-row-2">
-          <div class="field">
-            <label for="fullName">Full name</label>
-            <input class="input" type="text" id="fullName" required autocomplete="name" />
-          </div>
-          <div class="field">
-            <label for="phone">Phone number</label>
-            <input class="input" type="tel" id="phone" required autocomplete="tel" placeholder="+234…" />
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="email">Email address</label>
-          <input class="input" type="email" id="email" required autocomplete="email" />
-        </div>
-
-        <div class="form-row-2">
-          <div class="field">
-            <label for="dob">Date of birth</label>
-            <input class="input" type="date" id="dob" />
-          </div>
-          <div class="field">
-            <label for="gender">Gender</label>
-            <select class="input" id="gender">
-              <option value="">Prefer not to say</option>
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="address">Address</label>
-          <input class="input" type="text" id="address" placeholder="Street, city" />
-        </div>
-
-        <div class="field">
-          <label for="courseId">Course you'd like to study</label>
-          <select class="input" id="courseId">
-            <option value="">Loading courses…</option>
-          </select>
-          <div class="hint">You can change this later — it doesn't reserve a seat.</div>
-        </div>
-
-        <div class="form-row-2">
-          <div class="field">
-            <label for="password">Password</label>
-            <input class="input" type="password" id="password" required minlength="8" autocomplete="new-password" />
-          </div>
-          <div class="field">
-            <label for="confirmPassword">Confirm password</label>
-            <input class="input" type="password" id="confirmPassword" required minlength="8" autocomplete="new-password" />
-          </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-block" id="register-btn">Create Account</button>
-      </form>
-
-      <p class="switch-link">Already have an account? <a href="./login.html">Log in</a></p>
-    </div>
-  </div>
-</div>
-
-<script type="module">
-  import { registerStudent } from "./js/auth.js";
-  import { friendlyAuthError, setButtonLoading, setFieldError, clearFieldError, showToast } from "./js/utils.js";
-  import { supabase } from "./js/supabase.js";
-
-  const form = document.getElementById("register-form");
-  const alertBox = document.getElementById("form-alert");
-  const registerBtn = document.getElementById("register-btn");
-  const courseSelect = document.getElementById("courseId");
-
-  // Load published courses from Supabase for the "course of interest" dropdown.
-  (async function loadCourses() {
-    try {
-      const { data, error } = await supabase
-        .from("courses")
-        .select("id, name")
-        .eq("status", "published")
-        .order("name");
-      if (error) throw error;
-
-      courseSelect.innerHTML = '<option value="">Not sure yet — I\'ll choose later</option>';
-      (data || []).forEach((c) => {
-        const opt = document.createElement("option");
-        opt.value = c.id;
-        opt.textContent = c.name;
-        courseSelect.appendChild(opt);
-      });
-      if (!data || data.length === 0) {
-        courseSelect.innerHTML = '<option value="">No courses published yet</option>';
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Registration | TIDEF ITECH LMS</title>
+    <link
+      rel="icon"
+      href="https://www.tidefitech.com/img/Capture-removebg-preview.png"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./css/style.css" />
+    <style>
+      .auth-form-wrap.wide {
+        max-width: 520px;
       }
-    } catch (err) {
-      courseSelect.innerHTML = '<option value="">Not sure yet — I\'ll choose later</option>';
-    }
-  })();
+    </style>
+  </head>
+  <body>
+    <div class="auth-shell">
+      <div class="auth-visual">
+        <div class="brand">
+          <img
+            src="https://www.tidefitech.com/img/Capture-removebg-preview.png"
+            alt="TIDEF ITECH"
+          />
+          <span class="brand-name">TIDEF ITECH LMS</span>
+        </div>
+        <div>
+          <h2>Start your journey into tech with TIDEF ITECH.</h2>
+          <p>
+            Create your student account, verify your email, then complete
+            payment with our team to unlock your course.
+          </p>
+          <ul class="auth-points">
+            <li>1️⃣ Register and verify your email</li>
+            <li>2️⃣ Pay TIDEF ITECH directly (not through this site)</li>
+            <li>
+              3️⃣ Tell us you've paid — we'll confirm and unlock your course
+            </li>
+          </ul>
+        </div>
+        <p style="font-size: 0.82rem">
+          © 2026 TIDEF ITECH — Makurdi, Benue State
+        </p>
+      </div>
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    alertBox.innerHTML = "";
+      <div class="auth-form-side">
+        <div class="auth-form-wrap wide">
+          <div class="eyebrow">JOIN TIDEF ITECH</div>
+          <h1>Create your student account</h1>
+          <p class="sub">It only takes a couple of minutes.</p>
 
-    const fullName = document.getElementById("fullName");
-    const phone = document.getElementById("phone");
-    const email = document.getElementById("email");
-    const password = document.getElementById("password");
-    const confirmPassword = document.getElementById("confirmPassword");
+          <div id="form-alert"></div>
 
-    [fullName, phone, email, password, confirmPassword].forEach(clearFieldError);
+          <form id="register-form" novalidate>
+            <div class="form-row-2">
+              <div class="field">
+                <label for="fullName">Full name</label>
+                <input
+                  class="input"
+                  type="text"
+                  id="fullName"
+                  required
+                  autocomplete="name"
+                />
+              </div>
+              <div class="field">
+                <label for="phone">Phone number</label>
+                <input
+                  class="input"
+                  type="tel"
+                  id="phone"
+                  required
+                  autocomplete="tel"
+                  placeholder="+234…"
+                />
+              </div>
+            </div>
 
-    let hasError = false;
-    if (fullName.value.trim().length < 3) { setFieldError(fullName, "Enter your full name."); hasError = true; }
-    if (password.value.length < 8) { setFieldError(password, "Use at least 8 characters."); hasError = true; }
-    if (password.value !== confirmPassword.value) { setFieldError(confirmPassword, "Passwords don't match."); hasError = true; }
-    if (hasError) return;
+            <div class="field">
+              <label for="email">Email address</label>
+              <input
+                class="input"
+                type="email"
+                id="email"
+                required
+                autocomplete="email"
+              />
+            </div>
 
-    setButtonLoading(registerBtn, true, "Creating account…");
-    try {
-      await registerStudent({
-        fullName: fullName.value.trim(),
-        email: email.value.trim(),
-        phone: phone.value.trim(),
-        password: password.value,
-        dob: document.getElementById("dob").value,
-        gender: document.getElementById("gender").value,
-        address: document.getElementById("address").value.trim(),
-        courseId: courseSelect.value || null,
+            <div class="form-row-2">
+              <div class="field">
+                <label for="dob">Date of birth</label>
+                <input class="input" type="date" id="dob" />
+              </div>
+              <div class="field">
+                <label for="gender">Gender</label>
+                <select class="input" id="gender">
+                  <option value="">Prefer not to say</option>
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="address">Address</label>
+              <input
+                class="input"
+                type="text"
+                id="address"
+                placeholder="Street, city"
+              />
+            </div>
+
+            <div class="field">
+              <label for="courseId">Course you'd like to study</label>
+              <select class="input" id="courseId">
+                <option value="">Loading courses…</option>
+              </select>
+              <div class="hint">
+                You can change this later — it doesn't reserve a seat.
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <div class="field">
+                <label for="password">Password</label>
+                <input
+                  class="input"
+                  type="password"
+                  id="password"
+                  required
+                  minlength="8"
+                  autocomplete="new-password"
+                />
+              </div>
+              <div class="field">
+                <label for="confirmPassword">Confirm password</label>
+                <input
+                  class="input"
+                  type="password"
+                  id="confirmPassword"
+                  required
+                  minlength="8"
+                  autocomplete="new-password"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              class="btn btn-primary btn-block"
+              id="register-btn"
+            >
+              Create Account
+            </button>
+          </form>
+
+          <p class="switch-link">
+            Already have an account? <a href="./login.html">Log in</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { emailExists, registerStudent } from "./js/auth.js";
+      import {
+        friendlyAuthError,
+        setButtonLoading,
+        setFieldError,
+        clearFieldError,
+        showToast,
+      } from "./js/utils.js";
+      import { supabase } from "./js/supabase.js";
+
+      const form = document.getElementById("register-form");
+      const alertBox = document.getElementById("form-alert");
+      const registerBtn = document.getElementById("register-btn");
+      const courseSelect = document.getElementById("courseId");
+
+      // Load published courses from Supabase for the "course of interest" dropdown.
+      (async function loadCourses() {
+        try {
+          const { data, error } = await supabase
+            .from("courses")
+            .select("id, name")
+            .eq("status", "published")
+            .order("name");
+          if (error) throw error;
+
+          courseSelect.innerHTML =
+            '<option value="">Not sure yet — I\'ll choose later</option>';
+          (data || []).forEach((c) => {
+            const opt = document.createElement("option");
+            opt.value = c.id;
+            opt.textContent = c.name;
+            courseSelect.appendChild(opt);
+          });
+          if (!data || data.length === 0) {
+            courseSelect.innerHTML =
+              '<option value="">No courses published yet</option>';
+          }
+        } catch (err) {
+          courseSelect.innerHTML =
+            '<option value="">Not sure yet — I\'ll choose later</option>';
+        }
+      })();
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        alertBox.innerHTML = "";
+
+        const fullName = document.getElementById("fullName");
+        const phone = document.getElementById("phone");
+        const email = document.getElementById("email");
+        const password = document.getElementById("password");
+        const confirmPassword = document.getElementById("confirmPassword");
+
+        [fullName, phone, email, password, confirmPassword].forEach(
+          clearFieldError,
+        );
+
+        let hasError = false;
+        if (fullName.value.trim().length < 3) {
+          setFieldError(fullName, "Enter your full name.");
+          hasError = true;
+        }
+        if (password.value.length < 8) {
+          setFieldError(password, "Use at least 8 characters.");
+          hasError = true;
+        }
+        if (password.value !== confirmPassword.value) {
+          setFieldError(confirmPassword, "Passwords don't match.");
+          hasError = true;
+        }
+        if (hasError) return;
+
+        setButtonLoading(registerBtn, true, "Creating account…");
+        try {
+          if (await emailExists(email.value.trim())) {
+            setFieldError(
+              email,
+              "An account with this email already exists. Log in instead.",
+            );
+            setButtonLoading(registerBtn, false);
+            return;
+          }
+          await registerStudent({
+            fullName: fullName.value.trim(),
+            email: email.value.trim(),
+            phone: phone.value.trim(),
+            password: password.value,
+            dob: document.getElementById("dob").value,
+            gender: document.getElementById("gender").value,
+            address: document.getElementById("address").value.trim(),
+            courseId: courseSelect.value || null,
+          });
+          showToast(
+            "Account created! Check your email for the verification code.",
+            "success",
+          );
+          window.location.href = `./verify-email.html?identifier=${encodeURIComponent(email.value.trim())}`;
+        } catch (err) {
+          alertBox.innerHTML = `<div class="alert alert-danger">${friendlyAuthError(err)}</div>`;
+          setButtonLoading(registerBtn, false);
+        }
       });
-      showToast("Account created! Check your email to verify.", "success");
-      window.location.href = `./verify-email.html?email=${encodeURIComponent(email.value.trim())}`;
-    } catch (err) {
-      alertBox.innerHTML = `<div class="alert alert-danger">${friendlyAuthError(err)}</div>`;
-      setButtonLoading(registerBtn, false);
-    }
-  });
-</script>
-</body>
+    </script>
+  </body>
 </html>

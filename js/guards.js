@@ -27,7 +27,7 @@ function hideGuardLoading() {
 }
 
 /**
- * Require a signed-in, email-confirmed user whose account is approved
+ * Require a signed-in, email- or phone-confirmed user whose account is approved
  * (unless allowPending is set), and whose role is in allowedRoles.
  * Resolves with { user, profile } once checks pass; otherwise redirects.
  */
@@ -46,7 +46,7 @@ export function requireAuth({
       }
 
       if (!user.email_confirmed_at) {
-        window.location.href = `${appPath("verify-email.html")}?email=${encodeURIComponent(user.email)}`;
+        window.location.href = `${appPath("verify-email.html")}?identifier=${encodeURIComponent(user.email)}`;
         return;
       }
 

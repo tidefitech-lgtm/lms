@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Progress | TIDEF ITECH LMS Admin</title>
+    <link
+      rel="icon"
+      href="https://www.tidefitech.com/img/Capture-removebg-preview.png"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+    <style>
+      .progress-row {
+        padding: 16px 0;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      .progress-row:last-child {
+        border-bottom: none;
+      }
+      .course-progress {
+        margin-top: 10px;
+      }
+      .progress-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 0.85rem;
+        margin-bottom: 5px;
+      }
+      .progress-track {
+        background: var(--off-white);
+        border-radius: var(--radius-pill);
+        height: 9px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        background: var(--gradient-gold);
+        height: 100%;
+        border-radius: var(--radius-pill);
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import { requireAuth } from "../js/guards.js";
+      import { renderAppShell } from "../js/components.js";
+      import { supabase } from "../js/supabase.js";
+      import { escapeHtml } from "../js/utils.js";
+
+      const { profile } = await requireAuth({ allowedRoles: ["super_admin"] });
+      const content = renderAppShell({
+        role: profile.role,
+        profile,
+        pageTitle: "Student Progress",
+        activeHref: "student-progress.html",
+      });
+
+      content.innerHTML = `
+    <div class="flex items-center justify-between mb-4" style="gap:16px; flex-wrap:wrap;">
+      <div>
+        <h2 style="margin-bottom:4px;">Student progress</h2>
+        <p style="margin:0;">Lesson completion for every enrolled course.</p>
+      </div>
+      <input class="input" id="search" placeholder="Search students…" style="max-width:260px;" />
+    </div>
+    <div class="card"><div id="progress-list"><div class="state-block"><div class="spinner"></div></div></div></div>
+  `;
+
+      const list = document.getElementById("progress-list");
+      const search = document.getElementById("search");
+      let students = [];
+
+      function renderProgress() {
+        const query = search.value.trim().toLowerCase();
+        const filtered = students.filter(
+          (student) =>
+            !query ||
+            [student.full_name, student.email, student.student_id].some(
+              (value) => (value || "").toLowerCase().includes(query),
+            ),
+        );
+
+        if (filtered.length === 0) {
+          list.innerHTML = `<div class="state-block"><p>No matching students.</p></div>`;
+          return;
+        }
+
+        list.innerHTML = filtered
+          .map(
+            (student) => `
+      <div class="progress-row">
+        <div class="flex items-center justify-between" style="gap:16px; flex-wrap:wrap;">
+          <div>
+            <strong>${escapeHtml(student.full_name || "Unnamed student")}</strong>
+            <div class="text-secondary" style="font-size:0.85rem;">${escapeHtml(student.email || "")}${student.student_id ? ` · ${escapeHtml(student.student_id)}` : ""}</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="badge badge-neutral">${student.courses.length} course${student.courses.length === 1 ? "" : "s"}</span>
+            <span class="badge badge-info">${student.watchMinutes} watched minute${student.watchMinutes === 1 ? "" : "s"}</span>
+          </div>
+        </div>
+        ${
+          student.courses.length === 0
+            ? `<p class="text-secondary" style="margin:10px 0 0;">No course enrollments.</p>`
+            : student.courses
+                .map(
+                  (course) => `
+            <div class="course-progress">
+              <div class="progress-label">
+                <span>${escapeHtml(course.name)}</span>
+                <span class="text-secondary">${course.completed}/${course.total} lessons · ${course.percent}% · ${course.watchMinutes} min watched</span>
+              </div>
+              <div class="progress-track"><div class="progress-fill" style="width:${course.percent}%;"></div></div>
+            </div>
+          `,
+                )
+                .join("")
+        }
+      </div>
+    `,
+          )
+          .join("");
+      }
+
+      search.addEventListener("input", renderProgress);
+
+      async function loadProgress() {
+        const [
+          { data: studentRows, error: studentError },
+          { data: enrollmentRows, error: enrollmentError },
+          { data: lessonRows, error: lessonError },
+          { data: progressRows, error: progressError },
+        ] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("id, full_name, email, student_id")
+            .eq("role", "student")
+            .order("full_name"),
+          supabase
+            .from("enrollments")
+            .select("student_id, course_id, courses(name)")
+            .order("enrolled_at", { ascending: false }),
+          supabase.from("lessons").select("id, course_id"),
+          supabase
+            .from("lesson_progress")
+            .select(
+              "student_id, course_id, lesson_id, status, video_watch_seconds",
+            ),
+        ]);
+        if (studentError || enrollmentError || lessonError || progressError) {
+          throw studentError || enrollmentError || lessonError || progressError;
+        }
+
+        const lessonTotals = {};
+        (lessonRows || []).forEach((lesson) => {
+          lessonTotals[lesson.course_id] =
+            (lessonTotals[lesson.course_id] || 0) + 1;
+        });
+        const completedByStudentCourse = {};
+        const watchSecondsByStudentCourse = {};
+        (progressRows || []).forEach((progress) => {
+          const key = `${progress.student_id}:${progress.course_id}:${progress.lesson_id}`;
+          if (progress.status === "completed")
+            completedByStudentCourse[key] = true;
+          const courseKey = `${progress.student_id}:${progress.course_id}`;
+          watchSecondsByStudentCourse[courseKey] =
+            (watchSecondsByStudentCourse[courseKey] || 0) +
+            Number(progress.video_watch_seconds || 0);
+        });
+
+        const coursesByStudent = {};
+        (enrollmentRows || []).forEach((enrollment) => {
+          const total = lessonTotals[enrollment.course_id] || 0;
+          const completed = Object.keys(completedByStudentCourse).filter(
+            (key) =>
+              key.startsWith(
+                `${enrollment.student_id}:${enrollment.course_id}:`,
+              ),
+          ).length;
+          const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+          const watchMinutes =
+            Math.round(
+              ((watchSecondsByStudentCourse[
+                `${enrollment.student_id}:${enrollment.course_id}`
+              ] || 0) /
+                60) *
+                10,
+            ) / 10;
+          (coursesByStudent[enrollment.student_id] ||= []).push({
+            name: enrollment.courses?.name || "Unnamed course",
+            total,
+            completed,
+            percent,
+            watchMinutes,
+          });
+        });
+
+        students = (studentRows || []).map((student) => ({
+          ...student,
+          courses: coursesByStudent[student.id] || [],
+          watchMinutes:
+            Math.round(
+              (coursesByStudent[student.id] || []).reduce(
+                (sum, course) => sum + course.watchMinutes,
+                0,
+              ) * 10,
+            ) / 10,
+        }));
+        renderProgress();
+      }
+
+      try {
+        await loadProgress();
+      } catch (error) {
+        list.innerHTML = `<div class="alert alert-danger">Couldn't load student progress.</div>`;
+      }
+    </script>
+  </body>
+</html>
