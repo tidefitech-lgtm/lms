@@ -44,29 +44,31 @@ folder — it picks up everything under `supabase/migrations/` automatically.)
 ## 4. Configure OTP verification
 
 1. **Authentication → Providers → Email** — make sure **Confirm email**
-  is switched **on**. First click **Set up SMTP** on the Email Templates
-  page and configure a real SMTP provider such as Resend, Brevo, SendGrid,
-  or Gmail SMTP. Supabase's default email service does not allow custom
-  templates.
+   is switched **on**. First click **Set up SMTP** on the Email Templates
+   page and configure a real SMTP provider such as Resend, Brevo, SendGrid,
+   or Gmail SMTP. Supabase's default email service does not allow custom
+   templates.
 2. After SMTP is configured, open **Authentication → Email Templates → Confirm
-  signup** and replace the template with one that includes `{{ .Token }}`.
-  Remove every `{{ .ConfirmationURL }}` link from this template. For example:
+   signup** and replace the template with one that includes `{{ .Token }}`.
+   Remove every `{{ .ConfirmationURL }}` link from this template. For example:
 
-  ```html
-  <h2>Confirm your TIDEF ITECH account</h2>
-  <p>Your verification code is:</p>
-  <p style="font-size:32px;font-weight:700;letter-spacing:6px;">{{ .Token }}</p>
-  <p>This code expires soon. If you did not create an account, ignore this email.</p>
-  ```
+```html
+<h2>Confirm your TIDEF ITECH account</h2>
+<p>Your verification code is:</p>
+<p style="font-size:32px;font-weight:700;letter-spacing:6px;">{{ .Token }}</p>
+<p>
+  This code expires soon. If you did not create an account, ignore this email.
+</p>
+```
 
-  The registration page verifies this code with `verifyOtp`.
-3. **Authentication → URL Configuration** — set:
-   - **Site URL**: wherever you'll host this (e.g. `https://lms.tidefitech.com`,
-     or `http://localhost:3000` while testing locally)
-   - **Redirect URLs**: add both `/verify-email.html` and
-     `/reset-password.html` under that same origin, since those are the
-     pages Supabase redirects to after password-reset email links. Signup
-     verification stays on `verify-email.html` and uses an OTP.
+The registration page verifies this code with `verifyOtp`. 3. **Authentication → URL Configuration** — set:
+
+- **Site URL**: wherever you'll host this (e.g. `https://lms.tidefitech.com`,
+  or `http://localhost:3000` while testing locally)
+- **Redirect URLs**: add both `/verify-email.html` and
+  `/reset-password.html` under that same origin, since those are the
+  pages Supabase redirects to after password-reset email links. Signup
+  verification stays on `verify-email.html` and uses an OTP.
 
 Password-reset email templates can continue using Supabase's default link.
 

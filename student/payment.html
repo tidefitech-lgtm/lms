@@ -1,51 +1,83 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Payment | TIDEF ITECH LMS</title>
-<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="../css/style.css" />
-</head>
-<body style="background:var(--bg-page); min-height:100vh;">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Payment | TIDEF ITECH LMS</title>
+    <link
+      rel="icon"
+      href="https://www.tidefitech.com/img/Capture-removebg-preview.png"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body style="background: var(--bg-page); min-height: 100vh">
+    <div style="max-width: 640px; margin: 0 auto; padding: 40px 24px">
+      <div class="flex items-center gap-3 mb-4">
+        <img
+          src="https://www.tidefitech.com/img/Capture-removebg-preview.png"
+          alt="TIDEF ITECH"
+          style="height: 36px"
+        />
+        <strong style="font-family: var(--font-display); color: var(--navy-900)"
+          >TIDEF ITECH LMS</strong
+        >
+      </div>
 
-<div style="max-width:640px; margin:0 auto; padding:40px 24px;">
-  <div class="flex items-center gap-3 mb-4">
-    <img src="https://www.tidefitech.com/img/Capture-removebg-preview.png" alt="TIDEF ITECH" style="height:36px;" />
-    <strong style="font-family:var(--font-display); color:var(--navy-900);">TIDEF ITECH LMS</strong>
-  </div>
+      <div id="page-body" class="card">
+        <div class="state-block">
+          <div class="spinner"></div>
+          <p>Loading…</p>
+        </div>
+      </div>
 
-  <div id="page-body" class="card">
-    <div class="state-block"><div class="spinner"></div><p>Loading…</p></div>
-  </div>
+      <p class="switch-link mt-4">
+        <a href="./pending-approval.html" id="back-link">&larr; Back</a>
+      </p>
+    </div>
 
-  <p class="switch-link mt-4"><a href="./pending-approval.html" id="back-link">&larr; Back</a></p>
-</div>
+    <script type="module">
+      import { requireAuth } from "../js/guards.js";
+      import { logout } from "../js/auth.js";
+      import { supabase } from "../js/supabase.js";
+      import {
+        submitPaymentConfirmation,
+        getMyLatestPaymentConfirmation,
+      } from "../js/payments.js";
+      import {
+        setButtonLoading,
+        setFieldError,
+        clearFieldError,
+        showToast,
+        formatDate,
+        formatDateTime,
+      } from "../js/utils.js";
 
-<script type="module">
-  import { requireAuth } from "../js/guards.js";
-  import { logout } from "../js/auth.js";
-  import { supabase } from "../js/supabase.js";
-  import { submitPaymentConfirmation, getMyLatestPaymentConfirmation } from "../js/payments.js";
-  import { setButtonLoading, setFieldError, clearFieldError, showToast, formatDate, formatDateTime } from "../js/utils.js";
+      const { profile } = await requireAuth({
+        allowedRoles: ["student"],
+        allowPending: true,
+      });
+      const body = document.getElementById("page-body");
+      document.getElementById("back-link").href =
+        profile.account_status === "approved"
+          ? "./dashboard.html"
+          : "./pending-approval.html";
 
-  const { profile } = await requireAuth({ allowedRoles: ["student"], allowPending: true });
-  const body = document.getElementById("page-body");
-  document.getElementById("back-link").href = profile.account_status === "approved" ? "./dashboard.html" : "./pending-approval.html";
+      const latest = await getMyLatestPaymentConfirmation();
 
-  const latest = await getMyLatestPaymentConfirmation();
+      if (profile.payment_status === "confirmed") {
+        renderConfirmed();
+      } else if (profile.payment_status === "pending_verification") {
+        renderPending(latest);
+      } else {
+        renderForm(latest);
+      }
 
-  if (profile.payment_status === "confirmed") {
-    renderConfirmed();
-  } else if (profile.payment_status === "pending_verification") {
-    renderPending(latest);
-  } else {
-    renderForm(latest);
-  }
-
-  function renderConfirmed() {
-    body.innerHTML = `
+      function renderConfirmed() {
+        body.innerHTML = `
       <div class="text-center">
         <div style="font-size:2.5rem;">✅</div>
         <h2>Payment confirmed</h2>
@@ -54,10 +86,10 @@
         <a href="./dashboard.html" class="btn btn-primary mt-4">Go to Dashboard</a>
       </div>
     `;
-  }
+      }
 
-  function renderPending(confirmation) {
-    body.innerHTML = `
+      function renderPending(confirmation) {
+        body.innerHTML = `
       <div class="alert alert-warning mb-4">Your payment confirmation is <strong>pending verification</strong>. An admin will check it against TIDEF ITECH's records and update this page once reviewed.</div>
       <h3>What you submitted</h3>
       <div class="field"><label>Course</label><p>${confirmation?.courses?.name || "Not specified"}</p></div>
@@ -67,17 +99,21 @@
       <div class="field"><label>Note</label><p>${confirmation?.student_note || "—"}</p></div>
       <p class="text-secondary">Submitted ${formatDateTime(confirmation?.submitted_at)}</p>
     `;
-  }
+      }
 
-  function renderForm(previousConfirmation) {
-    const wasRejected = profile.payment_status === "rejected";
+      function renderForm(previousConfirmation) {
+        const wasRejected = profile.payment_status === "rejected";
 
-    body.innerHTML = `
-      ${wasRejected ? `
+        body.innerHTML = `
+      ${
+        wasRejected
+          ? `
         <div class="alert alert-danger mb-4">
           <strong>Your last submission couldn't be verified.</strong><br/>
           ${previousConfirmation?.admin_note ? `Reason: ${previousConfirmation.admin_note}` : ""}
-        </div>` : ""}
+        </div>`
+          : ""
+      }
 
       <h1>${wasRejected ? "Resubmit Payment Confirmation" : "I Have Completed Payment"}</h1>
       <p class="text-secondary">Have you already paid TIDEF ITECH directly (not through this website)? Let us know below and we'll verify it against our records.</p>
@@ -128,64 +164,80 @@
       </form>
     `;
 
-    loadCourses();
+        loadCourses();
 
-    document.getElementById("payment-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const alertBox = document.getElementById("form-alert");
-      alertBox.innerHTML = "";
-      const submitBtn = document.getElementById("submit-btn");
-      const courseSelect = document.getElementById("courseId");
+        document
+          .getElementById("payment-form")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const alertBox = document.getElementById("form-alert");
+            alertBox.innerHTML = "";
+            const submitBtn = document.getElementById("submit-btn");
+            const courseSelect = document.getElementById("courseId");
 
-      if (!courseSelect.value) {
-        setFieldError(courseSelect, "Please select the course you paid for.");
-        return;
+            if (!courseSelect.value) {
+              setFieldError(
+                courseSelect,
+                "Please select the course you paid for.",
+              );
+              return;
+            }
+            clearFieldError(courseSelect);
+
+            setButtonLoading(submitBtn, true, "Submitting…");
+            try {
+              await submitPaymentConfirmation({
+                courseId: courseSelect.value,
+                paymentReference: document
+                  .getElementById("paymentReference")
+                  .value.trim(),
+                paymentDate:
+                  document.getElementById("paymentDate").value || null,
+                paymentMethod: document.getElementById("paymentMethod").value,
+                studentNote: document
+                  .getElementById("studentNote")
+                  .value.trim(),
+              });
+              showToast(
+                "Payment confirmation submitted. We'll review it shortly.",
+                "success",
+              );
+              window.location.href = "./pending-approval.html";
+            } catch (err) {
+              alertBox.innerHTML = `<div class="alert alert-danger">${err.message || "Couldn't submit right now. Please try again."}</div>`;
+              setButtonLoading(submitBtn, false);
+            }
+          });
       }
-      clearFieldError(courseSelect);
 
-      setButtonLoading(submitBtn, true, "Submitting…");
-      try {
-        await submitPaymentConfirmation({
-          courseId: courseSelect.value,
-          paymentReference: document.getElementById("paymentReference").value.trim(),
-          paymentDate: document.getElementById("paymentDate").value || null,
-          paymentMethod: document.getElementById("paymentMethod").value,
-          studentNote: document.getElementById("studentNote").value.trim(),
-        });
-        showToast("Payment confirmation submitted. We'll review it shortly.", "success");
-        window.location.href = "./pending-approval.html";
-      } catch (err) {
-        alertBox.innerHTML = `<div class="alert alert-danger">${err.message || "Couldn't submit right now. Please try again."}</div>`;
-        setButtonLoading(submitBtn, false);
+      async function loadCourses() {
+        const courseSelect = document.getElementById("courseId");
+        try {
+          const { data, error } = await supabase
+            .from("courses")
+            .select("id, name")
+            .eq("status", "published")
+            .order("name");
+          if (error) throw error;
+
+          courseSelect.innerHTML = '<option value="">Select a course…</option>';
+          (data || []).forEach((c) => {
+            const opt = document.createElement("option");
+            opt.value = c.id;
+            opt.textContent = c.name;
+            if (c.id === profile.interested_course_id) opt.selected = true;
+            courseSelect.appendChild(opt);
+          });
+          if (!data || data.length === 0) {
+            courseSelect.innerHTML =
+              '<option value="">No courses published yet — contact TIDEF ITECH</option>';
+          }
+        } catch (err) {
+          courseSelect.innerHTML =
+            '<option value="">Couldn\'t load courses — try refreshing</option>';
+        }
       }
-    });
-  }
-
-  async function loadCourses() {
-    const courseSelect = document.getElementById("courseId");
-    try {
-      const { data, error } = await supabase
-        .from("courses")
-        .select("id, name")
-        .eq("status", "published")
-        .order("name");
-      if (error) throw error;
-
-      courseSelect.innerHTML = '<option value="">Select a course…</option>';
-      (data || []).forEach((c) => {
-        const opt = document.createElement("option");
-        opt.value = c.id;
-        opt.textContent = c.name;
-        if (c.id === profile.interested_course_id) opt.selected = true;
-        courseSelect.appendChild(opt);
-      });
-      if (!data || data.length === 0) {
-        courseSelect.innerHTML = '<option value="">No courses published yet — contact TIDEF ITECH</option>';
-      }
-    } catch (err) {
-      courseSelect.innerHTML = '<option value="">Couldn\'t load courses — try refreshing</option>';
-    }
-  }
-</script>
-</body>
+    </script>
+    <script type="module" src="../js/whatsapp.js"></script>
+  </body>
 </html>

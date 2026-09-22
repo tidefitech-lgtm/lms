@@ -1,28 +1,48 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Dashboard | TIDEF ITECH LMS</title>
-<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="../css/style.css" />
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f244a" />
+    <link rel="manifest" href="../manifest.webmanifest" />
+    <title>Dashboard | TIDEF ITECH LMS</title>
+    <link
+      rel="icon"
+      href="https://www.tidefitech.com/img/Capture-removebg-preview.png"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body>
+    <script type="module">
+      import { requireAuth } from "../js/guards.js";
+      import { renderAppShell } from "../js/components.js";
+      import { supabase } from "../js/supabase.js";
+      import { getMyEnrolledCourses, getCurriculum } from "../js/courses.js";
+      import {
+        getProgressForCourse,
+        computeCourseProgress,
+      } from "../js/learning.js";
+      import {
+        getAssignmentsForCourses,
+        getMySubmission,
+      } from "../js/assignments.js";
+      import { getMyCertificates } from "../js/certificates.js";
 
-<script type="module">
-  import { requireAuth } from "../js/guards.js";
-  import { renderAppShell } from "../js/components.js";
-  import { supabase } from "../js/supabase.js";
-  import { getMyEnrolledCourses, getCurriculum } from "../js/courses.js";
-  import { getProgressForCourse, computeCourseProgress } from "../js/learning.js";
-  import { getAssignmentsForCourses, getMySubmission } from "../js/assignments.js";
-  import { getMyCertificates } from "../js/certificates.js";
+      const { profile, user } = await requireAuth({
+        allowedRoles: ["student"],
+      });
+      const content = renderAppShell({
+        role: "student",
+        profile,
+        pageTitle: "Dashboard",
+        activeHref: "dashboard.html",
+      });
 
-  const { profile, user } = await requireAuth({ allowedRoles: ["student"] });
-  const content = renderAppShell({ role: "student", profile, pageTitle: "Dashboard", activeHref: "dashboard.html" });
-
-  content.innerHTML = `
+      content.innerHTML = `
     <div class="card mb-4" style="background:var(--gradient-brand); color:#fff; border:none;">
       <div class="flex items-center justify-between" style="flex-wrap:wrap; gap:16px;">
         <div>
@@ -52,100 +72,122 @@
     <div class="card mt-4 hidden" id="certificates-card"></div>
   `;
 
-  (async () => {
-    try {
-      const enrollments = await getMyEnrolledCourses();
-      const cards = document.querySelectorAll("#stat-grid .stat-card");
-      cards[0].innerHTML = `<div class="stat-value">${enrollments.length}</div><div class="stat-label">Enrolled Courses</div>`;
+      (async () => {
+        try {
+          const enrollments = await getMyEnrolledCourses();
+          const cards = document.querySelectorAll("#stat-grid .stat-card");
+          cards[0].innerHTML = `<div class="stat-value">${enrollments.length}</div><div class="stat-label">Enrolled Courses</div>`;
 
-      const coursesCard = document.getElementById("my-courses-card");
-      if (enrollments.length === 0) {
-        coursesCard.innerHTML = `<h3>My Courses</h3><div class="state-block"><p>You don't have any enrolled courses yet. An admin will enroll you once everything is set up.</p></div>`;
-        cards[3].innerHTML = `<div class="stat-value">0%</div><div class="stat-label">Avg. Course Progress</div>`;
-      } else {
-        coursesCard.innerHTML = `
+          const coursesCard = document.getElementById("my-courses-card");
+          if (enrollments.length === 0) {
+            coursesCard.innerHTML = `<h3>My Courses</h3><div class="state-block"><p>You don't have any enrolled courses yet. An admin will enroll you once everything is set up.</p></div>`;
+            cards[3].innerHTML = `<div class="stat-value">0%</div><div class="stat-label">Avg. Course Progress</div>`;
+          } else {
+            coursesCard.innerHTML = `
           <div class="flex items-center justify-between mb-2">
             <h3 style="margin:0;">My Courses</h3>
             <a href="./courses.html" class="btn btn-outline btn-sm">View All</a>
           </div>
-          ${enrollments.slice(0, 4).map((e) => `
+          ${enrollments
+            .slice(0, 4)
+            .map(
+              (e) => `
             <a href="./course.html?id=${e.courses.id}" style="text-decoration:none; display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); color:inherit;">
               <span>${e.courses.name}</span>
               <span class="badge ${e.status === "completed" ? "badge-success" : "badge-info"}">${e.status}</span>
             </a>
-          `).join("")}
+          `,
+            )
+            .join("")}
         `;
 
-        // Average progress across every enrolled course.
-        const percentages = await Promise.all(
-          enrollments.map(async (e) => {
-            const [curriculum, progress] = await Promise.all([
-              getCurriculum(e.courses.id),
-              getProgressForCourse(e.courses.id),
-            ]);
-            return computeCourseProgress(curriculum, progress).percent;
-          })
-        );
-        const avg = Math.round(percentages.reduce((a, b) => a + b, 0) / percentages.length);
-        cards[3].innerHTML = `<div class="stat-value">${avg}%</div><div class="stat-label">Avg. Course Progress</div>`;
+            // Average progress across every enrolled course.
+            const percentages = await Promise.all(
+              enrollments.map(async (e) => {
+                const [curriculum, progress] = await Promise.all([
+                  getCurriculum(e.courses.id),
+                  getProgressForCourse(e.courses.id),
+                ]);
+                return computeCourseProgress(curriculum, progress).percent;
+              }),
+            );
+            const avg = Math.round(
+              percentages.reduce((a, b) => a + b, 0) / percentages.length,
+            );
+            cards[3].innerHTML = `<div class="stat-value">${avg}%</div><div class="stat-label">Avg. Course Progress</div>`;
 
-        // Assignments not yet submitted, not past their deadline.
-        try {
-          const assignments = await getAssignmentsForCourses(enrollments.map((e) => e.courses.id));
-          const now = new Date();
-          const dueSubmissions = await Promise.all(assignments.map((a) => getMySubmission(a.id)));
-          const dueCount = assignments.filter((a, i) => !dueSubmissions[i] && (!a.due_at || new Date(a.due_at) >= now)).length;
-          cards[1].innerHTML = `<div class="stat-value">${dueCount}</div><div class="stat-label">Assignments Due</div>`;
-        } catch {
-          // Leave the default "0" if this fails.
+            // Assignments not yet submitted, not past their deadline.
+            try {
+              const assignments = await getAssignmentsForCourses(
+                enrollments.map((e) => e.courses.id),
+              );
+              const now = new Date();
+              const dueSubmissions = await Promise.all(
+                assignments.map((a) => getMySubmission(a.id)),
+              );
+              const dueCount = assignments.filter(
+                (a, i) =>
+                  !dueSubmissions[i] &&
+                  (!a.due_at || new Date(a.due_at) >= now),
+              ).length;
+              cards[1].innerHTML = `<div class="stat-value">${dueCount}</div><div class="stat-label">Assignments Due</div>`;
+            } catch {
+              // Leave the default "0" if this fails.
+            }
+          }
+        } catch (err) {
+          document.getElementById("my-courses-card").innerHTML =
+            `<h3>My Courses</h3><div class="alert alert-danger">Couldn't load your courses.</div>`;
+          const cards = document.querySelectorAll("#stat-grid .stat-card");
+          cards[3].innerHTML = `<div class="stat-value">—</div><div class="stat-label">Avg. Course Progress</div>`;
         }
-      }
-    } catch (err) {
-      document.getElementById("my-courses-card").innerHTML = `<h3>My Courses</h3><div class="alert alert-danger">Couldn't load your courses.</div>`;
-      const cards = document.querySelectorAll("#stat-grid .stat-card");
-      cards[3].innerHTML = `<div class="stat-value">—</div><div class="stat-label">Avg. Course Progress</div>`;
-    }
-  })();
+      })();
 
-  (async () => {
-    try {
-      const { count, error } = await supabase
-        .from("notifications")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("read", false);
-      if (error) throw error;
-      const cards = document.querySelectorAll("#stat-grid .stat-card");
-      cards[2].innerHTML = `<div class="stat-value">${count ?? 0}</div><div class="stat-label">Unread Notifications</div>`;
-    } catch (err) {
-      // Leave a quiet fallback rather than an infinite spinner.
-      const cards = document.querySelectorAll("#stat-grid .stat-card");
-      cards[2].innerHTML = `<div class="stat-value">—</div><div class="stat-label">Unread Notifications</div>`;
-    }
-  })();
+      (async () => {
+        try {
+          const { count, error } = await supabase
+            .from("notifications")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("read", false);
+          if (error) throw error;
+          const cards = document.querySelectorAll("#stat-grid .stat-card");
+          cards[2].innerHTML = `<div class="stat-value">${count ?? 0}</div><div class="stat-label">Unread Notifications</div>`;
+        } catch (err) {
+          // Leave a quiet fallback rather than an infinite spinner.
+          const cards = document.querySelectorAll("#stat-grid .stat-card");
+          cards[2].innerHTML = `<div class="stat-value">—</div><div class="stat-label">Unread Notifications</div>`;
+        }
+      })();
 
-  (async () => {
-    try {
-      const certs = await getMyCertificates();
-      if (certs.length === 0) return;
-      const card = document.getElementById("certificates-card");
-      card.classList.remove("hidden");
-      card.innerHTML = `
+      (async () => {
+        try {
+          const certs = await getMyCertificates();
+          if (certs.length === 0) return;
+          const card = document.getElementById("certificates-card");
+          card.classList.remove("hidden");
+          card.innerHTML = `
         <div class="flex items-center justify-between mb-2">
           <h3 style="margin:0;">📜 My Certificates</h3>
           <a href="./certificates.html" class="btn btn-outline btn-sm">View All</a>
         </div>
-        ${certs.slice(0, 3).map((c) => `
+        ${certs
+          .slice(0, 3)
+          .map(
+            (c) => `
           <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border-subtle);">
             <span>${c.courses?.name || ""}</span>
             <span class="text-secondary" style="font-size:0.85rem;">${c.certificate_number}</span>
           </div>
-        `).join("")}
+        `,
+          )
+          .join("")}
       `;
-    } catch (err) {
-      // Quietly leave the card hidden if this fails.
-    }
-  })();
-</script>
-</body>
+        } catch (err) {
+          // Quietly leave the card hidden if this fails.
+        }
+      })();
+    </script>
+    <script type="module" src="../js/pwa.js"></script>
+  </body>
 </html>

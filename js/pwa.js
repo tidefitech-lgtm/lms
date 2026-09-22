@@ -1,5 +1,13 @@
 let deferredInstallPrompt = null;
 
+const appRoot = new URL("../", import.meta.url);
+if (!document.querySelector('link[rel="manifest"]')) {
+  const manifestLink = document.createElement("link");
+  manifestLink.rel = "manifest";
+  manifestLink.href = new URL("manifest.webmanifest", appRoot).href;
+  document.head.appendChild(manifestLink);
+}
+
 function createInstallPrompt() {
   const prompt = document.createElement("aside");
   prompt.className = "pwa-install-prompt";
@@ -17,13 +25,15 @@ function createInstallPrompt() {
   `;
   document.body.appendChild(prompt);
 
-  prompt.querySelector("[data-pwa-install]").addEventListener("click", async () => {
-    if (!deferredInstallPrompt) return;
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
-    prompt.remove();
-  });
+  prompt
+    .querySelector("[data-pwa-install]")
+    .addEventListener("click", async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      prompt.remove();
+    });
 
   prompt.querySelector("[data-pwa-dismiss]").addEventListener("click", () => {
     sessionStorage.setItem("tidef-pwa-install-dismissed", "1");
@@ -33,7 +43,9 @@ function createInstallPrompt() {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    navigator.serviceWorker
+      .register(new URL("sw.js", appRoot), { scope: appRoot.pathname })
+      .catch(() => {});
   });
 }
 
