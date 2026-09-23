@@ -159,6 +159,45 @@ button {
   height: 23px;
   fill: #25d366;
 }
+
+.cookie-notice {
+  position: fixed;
+  left: 20px;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  box-shadow: var(--shadow-lg);
+}
+.cookie-notice strong {
+  display: block;
+  color: var(--navy-900);
+  font-family: var(--font-display);
+  margin-bottom: 4px;
+}
+.cookie-notice p {
+  margin: 0;
+  font-size: 0.82rem;
+}
+@media (max-width: 600px) {
+  .cookie-notice {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+  }
+}
 @keyframes whatsapp-float-in {
   from {
     opacity: 0;
@@ -571,6 +610,85 @@ textarea.input:focus {
   }
 }
 
+.registration-page {
+  min-height: 100dvh;
+  overflow: hidden;
+}
+.registration-page .auth-shell {
+  height: 100dvh;
+  min-height: 0;
+}
+.registration-page .auth-visual {
+  min-height: 0;
+  padding: var(--space-6) var(--space-7);
+}
+.registration-page .auth-form-side {
+  min-height: 0;
+  overflow-y: auto;
+  align-items: flex-start;
+  padding: var(--space-5) var(--space-6);
+}
+.registration-page .auth-form-wrap {
+  margin: auto 0;
+}
+.registration-page .auth-form-wrap .sub {
+  margin-bottom: var(--space-4);
+}
+.registration-page .auth-form-wrap .field {
+  margin-bottom: var(--space-3);
+}
+.registration-page .auth-form-wrap .input {
+  padding: 10px 12px;
+}
+.registration-page .auth-form-wrap .alert-info {
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.registration-page .auth-form-wrap .alert-info p {
+  font-size: inherit;
+  line-height: inherit;
+}
+.registration-page .auth-form-wrap details {
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.registration-page .auth-form-wrap details p {
+  font-size: 0.78rem;
+}
+.registration-page .auth-form-wrap .switch-link {
+  margin-top: var(--space-3);
+}
+
+@media (max-width: 900px) {
+  .registration-page {
+    overflow: visible;
+  }
+  .registration-page .auth-shell {
+    height: auto;
+    min-height: 100dvh;
+  }
+  .registration-page .auth-form-side {
+    min-height: 100dvh;
+    overflow: visible;
+    padding: var(--space-5) var(--space-4) var(--space-7);
+  }
+  .registration-page .auth-form-wrap {
+    margin: 0 auto;
+  }
+  .registration-page .auth-form-wrap .form-row-2 {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .registration-page .auth-form-wrap h1 {
+    font-size: 1.45rem;
+  }
+  .registration-page .auth-form-wrap .sub {
+    margin-bottom: var(--space-4);
+  }
+}
+
 /* ---------- App shell (dashboard layouts) ---------- */
 .app-shell {
   display: flex;
@@ -628,6 +746,17 @@ textarea.input:focus {
   font-size: 0.9rem;
   font-weight: 500;
   margin-bottom: 2px;
+}
+.app-sidebar .nav-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+.action-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  vertical-align: middle;
 }
 .app-sidebar .nav-link:hover {
   background: rgba(255, 255, 255, 0.06);
@@ -689,6 +818,9 @@ textarea.input:focus {
   font-size: 1.3rem;
   color: var(--navy-800);
   cursor: pointer;
+}
+.sidebar-toggle .action-icon {
+  display: block;
 }
 
 .user-chip {
@@ -1205,6 +1337,91 @@ textarea.input:focus {
   line-height: 1.7;
   max-width: 310px;
 }
+.landing-courses {
+  padding: var(--space-8) 0;
+  background: #f8f9fb;
+}
+.landing-courses-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.landing-courses-heading h2 {
+  margin: 10px 0 8px;
+  font-size: 2.4rem;
+}
+.landing-courses-heading p {
+  max-width: 560px;
+  margin: 0;
+}
+.landing-course-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+}
+.landing-course-card {
+  min-height: 290px;
+  padding: var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.landing-course-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+.landing-course-number {
+  color: var(--gold-600);
+  font: 700 0.82rem var(--font-body);
+  letter-spacing: 0.08em;
+}
+.landing-course-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-top: var(--space-7);
+}
+.landing-course-label {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.landing-course-card h3 {
+  margin: 8px 0;
+  font-size: 1.25rem;
+}
+.landing-course-card p {
+  flex: 1;
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+.landing-course-state {
+  grid-column: 1 / -1;
+  min-height: 180px;
+  padding: var(--space-7);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  text-align: center;
+}
+.landing-course-state .spinner {
+  margin: 0 auto 12px;
+}
+.landing-course-state h3 {
+  margin-bottom: 8px;
+}
+.landing-course-state p {
+  margin-bottom: var(--space-4);
+}
 .landing-steps {
   padding: var(--space-8) 0;
   background: #f8f9fb;
@@ -1310,9 +1527,17 @@ textarea.input:focus {
     height: 45px;
   }
   .landing-intro-grid,
-  .landing-feature-grid {
+  .landing-feature-grid,
+  .landing-course-grid {
     grid-template-columns: 1fr;
     gap: var(--space-5);
+  }
+  .landing-courses-heading {
+    display: block;
+  }
+  .landing-courses-heading .landing-text-link {
+    display: inline-block;
+    margin-top: var(--space-3);
   }
   .landing-feature-grid {
     margin-top: var(--space-6);

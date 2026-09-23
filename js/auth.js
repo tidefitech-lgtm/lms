@@ -85,7 +85,7 @@ export async function emailExists(email) {
 /** Send a password-reset email; landing page is reset-password.html. */
 export async function requestPasswordReset(email) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: appUrl("reset-password.html"),
+    redirectTo: new URL("../reset-password.html", import.meta.url).href,
   });
   if (error) throw error;
 }

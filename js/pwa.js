@@ -1,5 +1,31 @@
 let deferredInstallPrompt = null;
 
+const COOKIE_NOTICE_KEY = "tidef-cookie-notice-dismissed";
+
+function showCookieNotice() {
+  if (localStorage.getItem(COOKIE_NOTICE_KEY)) return;
+
+  const notice = document.createElement("aside");
+  notice.className = "cookie-notice";
+  notice.setAttribute("role", "dialog");
+  notice.setAttribute("aria-label", "Essential storage notice");
+  notice.innerHTML = `
+    <div>
+      <strong>Essential storage notice</strong>
+      <p>This website uses essential browser storage to keep you signed in, protect your account, and remember app settings. We do not use advertising or analytics cookies.</p>
+    </div>
+    <button class="btn btn-primary btn-sm" type="button" data-cookie-dismiss>Got it</button>
+  `;
+  document.body.appendChild(notice);
+
+  notice.querySelector("[data-cookie-dismiss]").addEventListener("click", () => {
+    localStorage.setItem(COOKIE_NOTICE_KEY, "1");
+    notice.remove();
+  });
+}
+
+if (document.body) showCookieNotice();
+
 const appRoot = new URL("../", import.meta.url);
 if (!document.querySelector('link[rel="manifest"]')) {
   const manifestLink = document.createElement("link");

@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0f244a" />
     <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="googlebot" content="noindex, nofollow, noarchive" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <title>Log In | TIDEF ITECH LMS</title>
+    <title>Admin Login | TIDEF ITECH LMS</title>
     <link
       rel="icon"
       href="https://www.tidefitech.com/img/Capture-removebg-preview.png"
@@ -29,15 +30,15 @@
           <span class="brand-name">TIDEF ITECH LMS</span>
         </div>
         <div>
-          <h2>Keep building your tech career, one lesson at a time.</h2>
+          <h2>Manage learning that moves people forward.</h2>
           <p>
-            Log in to pick up your courses, track your progress, and stay on top
-            of assignments, quizzes and exams.
+            Sign in to manage courses, support learners, review submissions, and
+            keep the TIDEF ITECH learning community moving.
           </p>
           <ul class="auth-points">
-            <li>📚 Access every course you're enrolled in</li>
-            <li>📈 See your progress update as you learn</li>
-            <li>🎓 Download your certificate when you finish</li>
+            <li>📊 Monitor learner progress and activity</li>
+            <li>📚 Manage courses, assignments, and exams</li>
+            <li>🎓 Review certificates and learner outcomes</li>
           </ul>
         </div>
         <p style="font-size: 0.82rem">
@@ -47,9 +48,9 @@
 
       <div class="auth-form-side">
         <div class="auth-form-wrap">
-          <div class="eyebrow">WELCOME BACK</div>
-          <h1>Log in to your account</h1>
-          <p class="sub">Enter your details to access your dashboard.</p>
+          <div class="eyebrow">STAFF PORTAL</div>
+          <h1>Admin login</h1>
+          <p class="sub">Sign in to access your staff dashboard.</p>
 
           <div id="form-alert"></div>
 
@@ -93,20 +94,18 @@
           </form>
 
           <p class="switch-link">
-            Don't have an account?
-            <a href="./register.html">Register as a student</a>
+            Are you a student?
+            <a href="./login.html">Go to student login</a>
           </p>
           <p class="switch-link">
-            <a href="https://www.tidefitech.com"
-              >&larr; Back to TIDEF ITECH website</a
-            >
+            <a href="./index.html">&larr; Back to home</a>
           </p>
         </div>
       </div>
     </div>
 
     <script type="module">
-      import { login, logout, getUserProfile } from "./js/auth.js";
+      import { getUserProfile, login, logout } from "./js/auth.js";
       import { ROLE_HOME_PAGE } from "./js/config.js";
       import {
         friendlyAuthError,
@@ -138,19 +137,14 @@
             return;
           }
           const profile = await getUserProfile(user.id);
-          if (profile?.role !== "student") {
+          if (!["teacher", "admin", "super_admin"].includes(profile?.role)) {
             await logout();
-            throw new Error("Staff accounts must use the admin login page.");
-          }
-          if (
-            profile?.role === "student" &&
-            profile.account_status !== "approved"
-          ) {
-            window.location.href = "./student/pending-approval.html";
-            return;
+            throw new Error(
+              "Student accounts must use the student login page.",
+            );
           }
           window.location.href =
-            ROLE_HOME_PAGE[profile?.role] || "./student/dashboard.html";
+            ROLE_HOME_PAGE[profile.role] || "./admin/dashboard.html";
         } catch (err) {
           if (err?.message?.toLowerCase().includes("email not confirmed")) {
             window.location.href = `./verify-email.html?identifier=${encodeURIComponent(emailEl.value.trim())}`;

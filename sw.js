@@ -1,8 +1,9 @@
-const CACHE_NAME = "tidef-lms-v1";
+const CACHE_NAME = "tidef-lms-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./login.html",
+  "./admin-login.html",
   "./register.html",
   "./css/style.css",
   "./js/config.js",

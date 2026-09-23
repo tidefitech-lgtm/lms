@@ -5,7 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Learn practical technology skills with TIDEF ITECH LMS. Create your student account and start learning."
+      content="Learn practical technology skills online with TIDEF ITECH LMS. Build job-ready skills through practical courses, assignments, quizzes, and guided learning."
+    />
+    <meta
+      name="keywords"
+      content="online learning Nigeria, technology courses Nigeria, practical tech skills, TIDEF ITECH, coding courses, digital skills training"
+    />
+    <meta name="author" content="TIDEF ITECH" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://lms.tidefitech.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TIDEF ITECH LMS" />
+    <meta
+      property="og:title"
+      content="TIDEF ITECH LMS | Practical Technology Skills"
+    />
+    <meta
+      property="og:description"
+      content="Build practical technology skills through focused courses, real coursework, and visible progress."
+    />
+    <meta property="og:url" content="https://lms.tidefitech.com/" />
+    <meta
+      property="og:image"
+      content="https://www.tidefitech.com/img/Capture-removebg-preview.png"
+    />
+    <meta property="og:image:alt" content="TIDEF ITECH LMS" />
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="TIDEF ITECH LMS | Practical Technology Skills"
+    />
+    <meta
+      name="twitter:description"
+      content="Build practical technology skills through focused courses, real coursework, and visible progress."
+    />
+    <meta
+      name="twitter:image"
+      content="https://www.tidefitech.com/img/Capture-removebg-preview.png"
     />
     <meta name="theme-color" content="#0f244a" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -25,6 +61,23 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./css/style.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "EducationalOrganization",
+        "name": "TIDEF ITECH LMS",
+        "url": "https://lms.tidefitech.com/",
+        "logo": "https://www.tidefitech.com/img/Capture-removebg-preview.png",
+        "description": "Practical technology skills training through focused online courses and real coursework.",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Makurdi",
+          "addressRegion": "Benue State",
+          "addressCountry": "NG"
+        },
+        "sameAs": ["https://www.tidefitech.com"]
+      }
+    </script>
   </head>
   <body class="landing-page">
     <header class="landing-header">
@@ -43,7 +96,13 @@
         <nav class="landing-links" aria-label="Main navigation">
           <a href="#how-it-works">How it works</a>
           <a href="#why-learn">Why learn here</a>
-          <a class="landing-login" href="./login.html">Log in</a>
+          <a
+            href="https://www.tidefitech.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Visit Tidef iTech</a
+          >
+          <a class="landing-login" href="./login.html">Student login</a>
           <a class="btn btn-primary btn-sm" href="./register.html"
             >Create account</a
           >
@@ -126,6 +185,30 @@
         <div class="landing-hero-swoop" aria-hidden="true"></div>
       </section>
 
+      <section class="landing-courses" id="courses">
+        <div class="container">
+          <div class="landing-courses-heading">
+            <div>
+              <div class="landing-section-label">Learn something useful</div>
+              <h2>Explore our courses</h2>
+              <p>
+                Practical learning paths designed to help you build confidence,
+                complete real work, and move toward your next opportunity.
+              </p>
+            </div>
+            <a class="landing-text-link" href="./register.html"
+              >View learning options <span aria-hidden="true">&rarr;</span></a
+            >
+          </div>
+          <div id="public-courses" class="landing-course-grid" aria-live="polite">
+            <div class="landing-course-state">
+              <div class="spinner"></div>
+              <p>Loading available courses…</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="landing-intro" id="why-learn">
         <div class="container landing-intro-grid">
           <div>
@@ -204,6 +287,32 @@
         </div>
       </section>
 
+      <section class="landing-intro" id="terms-of-service">
+        <div class="container">
+          <div class="landing-section-label">Clear expectations</div>
+          <h2>Terms of Service</h2>
+          <p>
+            By creating an account or using TIDEF ITECH LMS, you agree to
+            provide accurate information, keep your account secure, use the
+            platform and learning materials lawfully, and follow our community
+            standards.
+          </p>
+          <h3>Third-Party Educational Content Notice</h3>
+          <p>
+            This program utilizes curated public educational content, including
+            videos hosted on YouTube, to deliver certain parts of the learning
+            path. You are not being charged for these videos. All embedded or
+            linked third-party videos remain the intellectual property of their
+            respective creators and are freely accessible to the public directly
+            on their original platforms. TIDEF ITECH does not claim ownership
+            of, nor do we monetize, these external video materials. Your payment
+            is solely for the platform infrastructure, evaluation services,
+            mentorship, and community support we provide. TIDEF ITECH may
+            suspend access for fraud, misuse, or violation of these terms.
+          </p>
+        </div>
+      </section>
+
       <section class="landing-cta">
         <div class="container landing-cta-inner">
           <div>
@@ -228,10 +337,74 @@
             src="https://www.tidefitech.com/img/Capture-removebg-preview.png"
             alt="TIDEF ITECH"
           /><span>TIDEF ITECH <strong>LMS</strong></span></a
-        ><span>© 2026 TIDEF ITECH · Makurdi, Benue State</span>
+        ><span>© 2026 TIDEF ITECH</span>
+        <a
+          href="https://www.tidefitech.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Visit the TIDEF ITECH website</a
+        >
       </div>
     </footer>
     <script type="module" src="./js/pwa.js"></script>
     <script type="module" src="./js/whatsapp.js"></script>
+    <script type="module">
+      import { supabase } from "./js/supabase.js";
+
+      const courseGrid = document.getElementById("public-courses");
+
+      function escapeHtml(value = "") {
+        return String(value).replace(/[&<>'"]/g, (character) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;",
+        })[character]);
+      }
+
+      async function loadPublicCourses() {
+        try {
+          const { data, error } = await supabase
+            .from("courses")
+            .select("id, name, description")
+            .eq("status", "published")
+            .order("created_at", { ascending: false });
+          if (error) throw error;
+
+          if (!data?.length) {
+            courseGrid.innerHTML = `
+              <div class="landing-course-state">
+                <h3>New learning paths are on the way</h3>
+                <p>Join the community and be first to hear when the next course opens.</p>
+                <a class="btn btn-primary btn-sm" href="./register.html">Create your account</a>
+              </div>`;
+            return;
+          }
+
+          courseGrid.innerHTML = data
+            .map((course, index) => `
+              <article class="landing-course-card">
+                <div class="landing-course-number">0${index + 1}</div>
+                <div class="landing-course-body">
+                  <div class="landing-course-label">TIDEF ITECH learning path</div>
+                  <h3>${escapeHtml(course.name)}</h3>
+                  <p>${escapeHtml(course.description || "Build practical skills with guided lessons, useful assessments, and support from the TIDEF ITECH community.")}</p>
+                  <a class="landing-text-link" href="./register.html">Start this path <span aria-hidden="true">&rarr;</span></a>
+                </div>
+              </article>`)
+            .join("");
+        } catch {
+          courseGrid.innerHTML = `
+            <div class="landing-course-state">
+              <h3>Courses are available inside the LMS</h3>
+              <p>Create an account to see the latest learning paths and choose where to begin.</p>
+              <a class="btn btn-primary btn-sm" href="./register.html">Create your account</a>
+            </div>`;
+        }
+      }
+
+      loadPublicCourses();
+    </script>
   </body>
 </html>

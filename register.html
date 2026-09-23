@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
     <meta name="theme-color" content="#0f244a" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <title>Student Registration | TIDEF ITECH LMS</title>
@@ -22,7 +23,7 @@
       }
     </style>
   </head>
-  <body>
+  <body class="registration-page">
     <div class="auth-shell">
       <div class="auth-visual">
         <div class="brand">
@@ -164,6 +165,19 @@
             </button>
           </form>
 
+          <div class="alert alert-info" style="text-align:left; margin-top:16px;">
+            <strong>Third-Party Educational Content Notice</strong>
+            <p style="margin:8px 0 0;">This program utilizes curated public educational content, including videos hosted on YouTube, to deliver certain parts of the learning path. You are not being charged for these videos. All embedded or linked third-party videos remain the intellectual property of their respective creators and are freely accessible to the public directly on their original platforms. TIDEF ITECH does not claim ownership of, nor do we monetize, these external video materials. Your payment is solely for the platform infrastructure, evaluation services, mentorship, and community support we provide.</p>
+          </div>
+          <label style="display:flex; gap:10px; align-items:flex-start; margin-top:16px; font-size:0.9rem;">
+            <input type="checkbox" id="termsAccepted" required style="margin-top:4px;" />
+            <span>I agree to the <a href="#terms-of-service" style="color:var(--navy-800); font-weight:600;">Terms of Service</a>, including the Third-Party Educational Content Notice.</span>
+          </label>
+          <details id="terms-of-service" style="margin-top:12px;">
+            <summary style="cursor:pointer; font-weight:600; color:var(--navy-800);">Read Terms of Service</summary>
+            <p class="text-secondary" style="margin-top:10px;">You agree to provide accurate information, protect your account credentials, use the LMS and its materials lawfully, and follow TIDEF ITECH community standards. This program uses curated public educational content, including YouTube videos, and you are not charged for those videos. Third-party videos remain the intellectual property of their creators, are freely available on their original platforms, and are not monetized or owned by TIDEF ITECH. Your payment is solely for platform infrastructure, evaluation services, mentorship, and community support. TIDEF ITECH may suspend access for misuse, fraud, or violation of these terms.</p>
+          </details>
+
           <p class="switch-link">
             Already have an account? <a href="./login.html">Log in</a>
           </p>
@@ -224,6 +238,7 @@
         const email = document.getElementById("email");
         const password = document.getElementById("password");
         const confirmPassword = document.getElementById("confirmPassword");
+        const termsAccepted = document.getElementById("termsAccepted");
 
         [fullName, phone, email, password, confirmPassword].forEach(
           clearFieldError,
@@ -240,6 +255,11 @@
         }
         if (password.value !== confirmPassword.value) {
           setFieldError(confirmPassword, "Passwords don't match.");
+          hasError = true;
+        }
+        if (!termsAccepted.checked) {
+          termsAccepted.focus();
+          alertBox.innerHTML = `<div class="alert alert-danger">Please read and accept the Terms of Service before creating your account.</div>`;
           hasError = true;
         }
         if (hasError) return;

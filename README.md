@@ -106,7 +106,8 @@ also done via the Table Editor.
 ## 7. What's in this phase
 
 ```
-login.html                     Email/phone + password login
+login.html                     Student email/phone + password login
+admin-login.html               Staff/admin email/phone + password login
 register.html                  Student self-registration (role fixed to "student")
 verify-email.html              Verifies signup OTPs sent by email
 reset-password.html            Handles the Supabase password-reset redirect
@@ -587,3 +588,26 @@ Say which of these matters most for TIDEF ITECH's actual launch and
 I'll build it next — or if Phase 10-style testing is more valuable
 right now than more features, that's a completely reasonable place to
 pause and consolidate instead.
+
+## SEO and Google Search Console
+
+The public SEO entry point is `index.html`. It includes canonical metadata,
+social sharing metadata, and `EducationalOrganization` structured data.
+`robots.txt` and `sitemap.xml` are configured for `https://lms.tidefitech.com`.
+Admin, student, teacher, and authentication routes are excluded from crawling;
+the admin login also has an explicit `noindex` directive.
+
+Before launch:
+
+1. Confirm the site is actually deployed at `https://lms.tidefitech.com`. If
+   the production hostname differs, update the canonical URL in `index.html`
+   and the URLs in `robots.txt` and `sitemap.xml`.
+2. Open [Google Search Console](https://search.google.com/search-console) and
+   add the production domain as a Domain property. DNS verification is the
+   preferred method.
+3. Submit `https://lms.tidefitech.com/sitemap.xml` under **Sitemaps**.
+4. Use **URL inspection** for the homepage and request indexing after the
+   production deployment is live.
+5. Do not add a guessed `google-site-verification` token to the HTML. If HTML
+   tag verification is required, paste the exact token supplied by Search
+   Console into the homepage `<head>`.

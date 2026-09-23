@@ -120,6 +120,14 @@
     <div class="mb-4">
       <h2 style="margin-bottom:4px;">Payment Confirmations Waiting For Review</h2>
       <p class="text-secondary">Check each payment against TIDEF ITECH's external payment records before confirming. Confirming grants course access and assigns a Student ID; rejecting requires a reason.</p>
+      <div class="alert alert-info" style="text-align:left;">
+        <strong>Third-Party Educational Content Notice</strong>
+        <p style="margin:8px 0 0;">This program utilizes curated public educational content, including videos hosted on YouTube, to deliver certain parts of the learning path. Students are not being charged for these videos. All embedded or linked third-party videos remain the intellectual property of their respective creators and are freely accessible to the public directly on their original platforms. TIDEF ITECH does not claim ownership of, nor do we monetize, these external video materials. Student payments are solely for the platform infrastructure, evaluation services, mentorship, and community support we provide. Verify only payments made through the approved TIDEF ITECH process.</p>
+      </div>
+      <details style="margin-top:12px;">
+        <summary style="cursor:pointer; font-weight:600; color:var(--navy-800);">Terms of Service</summary>
+        <p class="text-secondary" style="margin-top:10px;">Users must provide accurate information, protect their accounts, use the LMS lawfully, and follow community standards. Payments cover only the platform infrastructure, evaluation services, mentorship, and community support provided by TIDEF ITECH. Access may be suspended for fraud, misuse, or violation of these terms.</p>
+      </details>
     </div>
     <div id="pending-list"></div>
     <div class="card mt-4">
@@ -298,5 +306,6 @@
       loadReviewed();
     </script>
     <script type="module" src="../js/whatsapp.js"></script>
+    <script type="module" src="../js/pwa.js"></script>
   </body>
 </html>
