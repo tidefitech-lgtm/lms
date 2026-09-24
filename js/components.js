@@ -4,6 +4,11 @@
 import { logout } from "./auth.js";
 import { getInitials } from "./utils.js";
 import { ROLES } from "./config.js";
+import { toDriveImageUrl } from "./google-drive.js";
+const NAV_BY_ROLE = {
+  [ROLES.STUDENT]: [
+    { section: "Learning" },
+    { href: "../student/dashboard.html", icon: "home", label: "Dashboard" },
     { href: "../student/courses.html", icon: "book-open", label: "My Courses" },
     {
       href: "../student/assignments.html",
@@ -40,6 +45,11 @@ import { ROLES } from "./config.js";
       href: "../student/id-card.html",
       icon: "identification",
       label: "Student ID Card",
+    },
+    {
+      href: "../student/profile.html",
+      icon: "identification",
+      label: "My Profile",
     },
     {
       href: "../student/certificates.html",
@@ -218,7 +228,7 @@ export function renderAppShell({ role, profile, pageTitle, activeHref }) {
             <div class="user-chip" title="${profile?.full_name || ""}">
               <div class="avatar">${
                 profile?.profile_photo_url
-                  ? `<img src="${profile.profile_photo_url}" alt="" />`
+                  ? `<img src="${toDriveImageUrl(profile.profile_photo_url)}" alt="" />`
                   : initials
               }</div>
             </div>

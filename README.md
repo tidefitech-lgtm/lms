@@ -24,6 +24,24 @@ by an admin action in Phase 2).
 Never use the **service_role** key here — that key bypasses Row Level
 Security entirely and must never be shipped to a browser.
 
+## Passport uploads to Google Drive
+
+Registration requires a passport photograph. The browser uploads it through
+the Google Apps Script in `google-drive-upload.gs`; Google Drive credentials
+never go into the LMS. To enable it:
+
+1. Create a Drive folder and copy its folder ID into `DRIVE_FOLDER_ID` in
+   `google-drive-upload.gs`.
+2. Deploy the script as a Web app, executing as you, accessible to anyone.
+3. Paste the deployed `/exec` URL into `GOOGLE_DRIVE_UPLOAD_URL` in
+   `js/config.js`.
+4. Run `supabase/migrations/0017_passport_drive_url.sql` in the Supabase SQL
+   editor.
+
+The migration stores the returned Drive view link in
+`profiles.profile_photo_url`, so the existing dashboard avatar and ID card can
+display the passport photograph.
+
 ## 3. Run the database migration
 
 1. In the project: **SQL Editor → New query**.

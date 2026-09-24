@@ -2,7 +2,8 @@
 // TIDEF ITECH LMS — Authentication (Supabase)
 // =========================================================
 // Registration only ever sends safe, self-descriptive fields as signup
-// metadata (full_name, phone, dob, gender, address, interested_course_id).
+// metadata (full_name, phone, dob, gender, address, interested_course_id,
+// passport_url).
 // The public.profiles row itself is created server-side by a Postgres
 // trigger (see supabase/migrations/0001_init.sql) that ignores anything
 // else the client might try to send — role/account_status/payment_status/
@@ -13,11 +14,20 @@ import { supabase } from "./supabase.js";
 
 /**
  * Register a new student account.
- * @param {Object} data - fullName, email, phone, password, dob, gender, address, courseId
+ * @param {Object} data - fullName, email, phone, password, dob, gender, address, courseId, passportUrl
  */
 export async function registerStudent(data) {
-  const { email, password, fullName, phone, dob, gender, address, courseId } =
-    data;
+  const {
+    email,
+    password,
+    fullName,
+    phone,
+    dob,
+    gender,
+    address,
+    courseId,
+    passportUrl,
+  } = data;
 
   const options = {
     data: {
@@ -28,6 +38,7 @@ export async function registerStudent(data) {
       gender: gender || null,
       address: address || null,
       interested_course_id: courseId || null,
+      passport_url: passportUrl || null,
     },
   };
   const { data: signUpData, error } = await supabase.auth.signUp({

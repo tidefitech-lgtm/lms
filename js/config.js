@@ -52,3 +52,8 @@ export const ROLE_HOME_PAGE = Object.freeze({
 
 // Public marketing site (outside the LMS) — used for the "Back to website" link
 export const MARKETING_SITE_URL = "https://www.tidefitech.com";
+
+// Deploy google-drive-upload.gs as a Google Apps Script web app and paste its
+// /exec URL here. The browser never receives Google Drive credentials.
+export const GOOGLE_DRIVE_UPLOAD_URL =
+  "https://script.google.com/macros/s/AKfycbwZqYaEQ6fNEJI57PmIk3t-DC4Fm9bEvAinXDbafkmWdueiu7nQF1aujDI04iDdoiw/exec";

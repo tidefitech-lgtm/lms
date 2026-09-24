@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Profile | TIDEF ITECH LMS</title>
+    <link
+      rel="icon"
+      href="https://www.tidefitech.com/img/Capture-removebg-preview.png"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+    <style>
+      .profile-layout {
+        display: grid;
+        grid-template-columns: minmax(220px, 280px) 1fr;
+        gap: 24px;
+        align-items: start;
+      }
+      .profile-photo-panel {
+        text-align: center;
+      }
+      .profile-photo {
+        width: 190px;
+        height: 190px;
+        margin: 0 auto 16px;
+        border: 6px solid var(--navy-800);
+        border-radius: 50%;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--off-white);
+        color: var(--navy-900);
+        font-size: 2.5rem;
+        font-weight: 700;
+      }
+      .profile-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .profile-photo-panel p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+      }
+      .profile-details {
+        display: grid;
+        gap: 14px;
+      }
+      .profile-detail {
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      .profile-detail label {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        margin-bottom: 3px;
+      }
+      @media (max-width: 700px) {
+        .profile-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import { requireAuth } from "../js/guards.js";
+      import { renderAppShell } from "../js/components.js";
+      import { uploadPassport, toDriveImageUrl } from "../js/google-drive.js";
+      import { supabase } from "../js/supabase.js";
+      import {
+        escapeHtml,
+        getInitials,
+        setButtonLoading,
+        showToast,
+      } from "../js/utils.js";
+
+      const { user, profile } = await requireAuth({
+        allowedRoles: ["student"],
+      });
+      const content = renderAppShell({
+        role: "student",
+        profile,
+        pageTitle: "My Profile",
+        activeHref: "profile.html",
+      });
+
+      const photoUrl = toDriveImageUrl(profile.profile_photo_url);
+      content.innerHTML = `
+        <div class="card">
+          <div class="profile-layout">
+            <section class="profile-photo-panel">
+              <div class="profile-photo" id="profile-photo">
+                ${photoUrl ? `<img src="${escapeHtml(photoUrl)}" alt="Profile photo" />` : escapeHtml(getInitials(profile.full_name))}
+              </div>
+              <p id="photo-status">Your profile picture is visible to administrators.</p>
+              <form id="photo-form" class="mt-4">
+                <input class="input" type="file" id="profile-photo-input" accept="image/jpeg,image/png,image/webp" required />
+                <div class="hint" style="text-align:left;">JPG, PNG, or WebP. Maximum 5 MB.</div>
+                <button class="btn btn-primary btn-block mt-3" type="submit" id="photo-btn">Upload new picture</button>
+              </form>
+            </section>
+            <section>
+              <h2>${escapeHtml(profile.full_name || "Student profile")}</h2>
+              <p class="text-secondary">Keep your profile picture up to date. It will also appear on your dashboard, ID card, and in the admin student list.</p>
+              <div class="profile-details mt-4">
+                <div class="profile-detail"><label>Email</label><strong>${escapeHtml(profile.email || user.email || "—")}</strong></div>
+                <div class="profile-detail"><label>Phone</label><strong>${escapeHtml(profile.phone || "—")}</strong></div>
+                <div class="profile-detail"><label>Student ID</label><strong>${escapeHtml(profile.student_id || "Not assigned yet")}</strong></div>
+                <div class="profile-detail"><label>Account status</label><strong>${escapeHtml(profile.account_status || "—")}</strong></div>
+              </div>
+            </section>
+          </div>
+        </div>
+      `;
+
+      document
+        .getElementById("photo-form")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const input = document.getElementById("profile-photo-input");
+          const button = document.getElementById("photo-btn");
+          const file = input.files?.[0];
+          if (!file) return;
+
+          setButtonLoading(button, true, "Uploading…");
+          try {
+            const url = await uploadPassport(file, user.email);
+            const { error } = await supabase
+              .from("profiles")
+              .update({
+                profile_photo_url: url,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", user.id);
+            if (error) throw error;
+            document.getElementById("profile-photo").innerHTML =
+              `<img src="${escapeHtml(url)}" alt="Profile photo" />`;
+            document.getElementById("photo-status").textContent =
+              "Profile picture updated successfully.";
+            input.value = "";
+            showToast("Profile picture updated.", "success");
+          } catch (error) {
+            showToast(
+              error.message || "Could not update profile picture.",
+              "error",
+            );
+          } finally {
+            setButtonLoading(button, false);
+          }
+        });
+    </script>
+  </body>
+</html>
