@@ -93,13 +93,42 @@
         <p style="margin:0;">Updates about your account, coursework, and certificates.</p>
       </div>
       <button class="btn btn-outline btn-sm" id="mark-all-read">Mark all as read</button>
+      <button class="btn btn-outline btn-sm" id="enable-browser-notifications">Enable browser alerts</button>
     </div>
     <div class="card"><div id="notification-list"><div class="state-block"><div class="spinner"></div></div></div></div>
   `;
 
       const list = document.getElementById("notification-list");
       const markAllButton = document.getElementById("mark-all-read");
+      const browserNotificationsButton = document.getElementById("enable-browser-notifications");
       let notifications = [];
+
+      browserNotificationsButton.addEventListener("click", async () => {
+        if (!("Notification" in window)) {
+          showToast("This browser does not support notifications.", "error");
+          return;
+        }
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+          browserNotificationsButton.textContent = "Browser alerts enabled";
+          browserNotificationsButton.disabled = true;
+          showToast("Browser alerts enabled while this LMS is open.", "success");
+        }
+      });
+
+      if ("Notification" in window && Notification.permission === "granted") {
+        browserNotificationsButton.textContent = "Browser alerts enabled";
+        browserNotificationsButton.disabled = true;
+      }
+
+      supabase
+        .channel(`student-notifications-${user.id}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, ({ new: notification }) => {
+          notifications.unshift(notification);
+          renderNotifications();
+          if (Notification.permission === "granted") new Notification(notification.title, { body: notification.body || "TIDEF ITECH LMS update" });
+        })
+        .subscribe();
 
       async function loadNotifications() {
         list.innerHTML = `<div class="state-block"><div class="spinner"></div></div>`;

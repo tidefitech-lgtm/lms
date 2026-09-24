@@ -22,6 +22,7 @@ const NAV_BY_ROLE = {
       label: "Quizzes",
     },
     { href: "../student/exams.html", icon: "academic-cap", label: "Exams" },
+    { href: "../student/live-classes.html", icon: "video-camera", label: "Live Classes" },
     { section: "Community" },
     {
       href: "../student/community.html",
@@ -67,6 +68,7 @@ const NAV_BY_ROLE = {
       label: "Assignments",
     },
     { href: "../teacher/projects.html", icon: "rocket", label: "Projects" },
+    { href: "../teacher/live-classes.html", icon: "video-camera", label: "Live Classes" },
     {
       href: "../teacher/quizzes.html",
       icon: "question-mark-circle",
@@ -103,6 +105,7 @@ const NAV_BY_ROLE = {
       label: "Assignments",
     },
     { href: "../admin/projects.html", icon: "rocket", label: "Projects" },
+    { href: "../admin/live-classes.html", icon: "video-camera", label: "Live Classes" },
     {
       href: "../admin/quizzes.html",
       icon: "question-mark-circle",
@@ -171,6 +174,8 @@ const ICON_PATHS = {
     '<path d="M14.25 5.25c2.25-1.5 4.5-1.5 4.5-1.5s0 2.25-1.5 4.5l-6.75 6.75-3.75-3.75 7.5-6Z"/><path d="m7.5 11.25-3 1.5 3.75 3.75 1.5-3M12 16.5l-.75 3.75-3-3M15.75 8.25h.008"/>',
   users:
     '<path d="M15.75 19.5v-1.125A3.375 3.375 0 0 0 12.375 15h-4.5A3.375 3.375 0 0 0 4.5 18.375V19.5M10.125 11.25a3.375 3.375 0 1 0 0-6.75 3.375 3.375 0 0 0 0 6.75ZM15.75 5.25a3.375 3.375 0 0 1 0 6.75M18.75 19.5v-1.125a3.375 3.375 0 0 0-2.25-3.18"/>',
+  "video-camera":
+    '<rect x="3.75" y="6.75" width="11.25" height="10.5" rx="1.5"/><path d="m15 10.125 5.25-3v9.75l-5.25-3"/>',
   "arrow-left-on-rectangle":
     '<path d="M13.5 8.25 17.25 12l-3.75 3.75M17.25 12H3.75M15 4.5h3.75A1.5 1.5 0 0 1 20.25 6v12a1.5 1.5 0 0 1-1.5 1.5H15"/>',
   "bars-3": '<path d="M4.5 6.75h15M4.5 12h15M4.5 17.25h15"/>',

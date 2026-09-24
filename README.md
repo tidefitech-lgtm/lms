@@ -42,6 +42,17 @@ The migration stores the returned Drive view link in
 `profiles.profile_photo_url`, so the existing dashboard avatar and ID card can
 display the passport photograph.
 
+## Live classes and notifications
+
+Run `supabase/migrations/0019_live_classes.sql` followed by
+`supabase/migrations/0020_restore_rls_helper_grants.sql`. Admins and assigned
+teachers can schedule Google Meet or Zoom classes from their **Live Classes**
+page. Enrolled students see upcoming classes and receive in-app notifications.
+The notification page can also show browser alerts while it is open. True
+background Web Push after the browser is closed requires a VAPID sender or
+push provider; Meet and Zoom may block iframe embedding, so every class also
+has an **Open meeting** fallback.
+
 ## 3. Run the database migration
 
 1. In the project: **SQL Editor → New query**.

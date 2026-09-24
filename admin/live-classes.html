@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Live Classes | TIDEF ITECH LMS Admin</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<script type="module">
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { createLiveClass, deleteLiveClass, getLiveClasses } from "../js/live-classes.js";
+  import { supabase } from "../js/supabase.js";
+  import { escapeHtml, formatDateTime, setButtonLoading, showToast } from "../js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["admin", "super_admin"] });
+  const content = renderAppShell({ role: profile.role, profile, pageTitle: "Live Classes", activeHref: "live-classes.html" });
+  content.innerHTML = `
+    <div class="card mb-4">
+      <h2>Schedule a live class</h2>
+      <form id="class-form">
+        <div class="form-row-2">
+          <div class="field"><label for="course">Course</label><select class="input" id="course" required><option value="">Loading courses...</option></select></div>
+          <div class="field"><label for="title">Class title</label><input class="input" id="title" required maxlength="160" /></div>
+        </div>
+        <div class="form-row-2">
+          <div class="field"><label for="provider">Platform</label><select class="input" id="provider"><option value="google_meet">Google Meet</option><option value="zoom">Zoom</option></select></div>
+          <div class="field"><label for="meetingUrl">Meeting URL</label><input class="input" id="meetingUrl" type="url" placeholder="https://meet.google.com/..." required /></div>
+        </div>
+        <div class="form-row-2">
+          <div class="field"><label for="startsAt">Starts</label><input class="input" id="startsAt" type="datetime-local" required /></div>
+          <div class="field"><label for="endsAt">Ends (optional)</label><input class="input" id="endsAt" type="datetime-local" /></div>
+        </div>
+        <div class="field"><label for="description">Details</label><textarea class="input" id="description" rows="3" maxlength="2000"></textarea></div>
+        <button class="btn btn-primary" id="save-btn" type="submit">Schedule class</button>
+      </form>
+    </div>
+    <div class="card"><h2>Scheduled classes</h2><div id="class-list"><div class="state-block"><div class="spinner"></div></div></div></div>`;
+
+  const courseSelect = document.getElementById("course");
+  const list = document.getElementById("class-list");
+  const { data: courses, error: courseError } = await supabase.from("courses").select("id,name").order("name");
+  if (courseError) throw courseError;
+  courseSelect.innerHTML = (courses || []).map((course) => `<option value="${course.id}">${escapeHtml(course.name)}</option>`).join("");
+
+  async function loadClasses() {
+    const classes = await getLiveClasses();
+    list.innerHTML = classes.length ? classes.map(renderClass).join("") : `<div class="state-block"><p>No live classes scheduled.</p></div>`;
+    list.querySelectorAll("[data-delete]").forEach((button) => button.addEventListener("click", async () => {
+      try { await deleteLiveClass(button.dataset.delete); await loadClasses(); showToast("Live class deleted.", "success"); } catch (error) { showToast(error.message, "error"); }
+    }));
+  }
+
+  function renderClass(item) {
+    return `<div style="padding:14px 0;border-bottom:1px solid var(--border-subtle);"><div class="flex items-center justify-between" style="gap:12px;flex-wrap:wrap;"><strong>${escapeHtml(item.title)}</strong><button class="btn btn-danger btn-sm" data-delete="${item.id}">Delete</button></div><div class="text-secondary">${escapeHtml(item.courses?.name || "Course")} · ${formatDateTime(item.starts_at)} · ${item.provider === "zoom" ? "Zoom" : "Google Meet"}</div><a href="${escapeHtml(item.meeting_url)}" target="_blank" rel="noopener noreferrer">Open meeting</a></div>`;
+  }
+
+  document.getElementById("class-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = document.getElementById("save-btn");
+    setButtonLoading(button, true, "Scheduling...");
+    try {
+      await createLiveClass({ course_id: courseSelect.value, teacher_id: profile.id, title: document.getElementById("title").value.trim(), description: document.getElementById("description").value.trim() || null, provider: document.getElementById("provider").value, meeting_url: document.getElementById("meetingUrl").value.trim(), starts_at: new Date(document.getElementById("startsAt").value).toISOString(), ends_at: document.getElementById("endsAt").value ? new Date(document.getElementById("endsAt").value).toISOString() : null });
+      event.target.reset(); await loadClasses(); showToast("Live class scheduled and students notified.", "success");
+    } catch (error) { showToast(error.message || "Could not schedule class.", "error"); }
+    finally { setButtonLoading(button, false); }
+  });
+  loadClasses();
+</script>
+</body>
+</html>

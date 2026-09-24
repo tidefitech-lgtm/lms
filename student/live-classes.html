@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Live Classes | TIDEF ITECH LMS</title>
+<link rel="icon" href="https://www.tidefitech.com/img/Capture-removebg-preview.png" />
+<link rel="stylesheet" href="../css/style.css" />
+<style>.meeting-frame { width:100%; min-height:420px; border:1px solid var(--border-subtle); border-radius:var(--radius-md); margin-top:14px; background:#f7f8fb; }</style>
+</head>
+<body>
+<script type="module">
+  import { requireAuth } from "../js/guards.js";
+  import { renderAppShell } from "../js/components.js";
+  import { getLiveClasses, meetingEmbedUrl } from "../js/live-classes.js";
+  import { getMyEnrolledCourses } from "../js/courses.js";
+  import { escapeHtml, formatDateTime } from "../js/utils.js";
+
+  const { profile } = await requireAuth({ allowedRoles: ["student"] });
+  const content = renderAppShell({ role: "student", profile, pageTitle: "Live Classes", activeHref: "live-classes.html" });
+  content.innerHTML = `<div class="card"><h2>Live classes</h2><p class="text-secondary">Your scheduled classes appear here. Google Meet and Zoom may block iframe embedding; use Open meeting when the preview is unavailable.</p><div id="class-list"><div class="state-block"><div class="spinner"></div></div></div></div>`;
+
+  const enrollments = await getMyEnrolledCourses();
+  const classes = await getLiveClasses({ courseIds: enrollments.map((item) => item.courses.id), upcomingOnly: true });
+  const list = document.getElementById("class-list");
+  list.innerHTML = classes.length ? classes.map((item) => {
+    const embedUrl = meetingEmbedUrl(item.meeting_url);
+    return `<article style="padding:16px 0;border-bottom:1px solid var(--border-subtle);"><div class="flex items-center justify-between" style="gap:16px;flex-wrap:wrap;"><div><h3 style="margin:0 0 4px;">${escapeHtml(item.title)}</h3><div class="text-secondary">${escapeHtml(item.courses?.name || "Course")} · ${formatDateTime(item.starts_at)}</div></div><a class="btn btn-primary btn-sm" href="${escapeHtml(item.meeting_url)}" target="_blank" rel="noopener noreferrer">Open meeting</a></div>${item.description ? `<p>${escapeHtml(item.description)}</p>` : ""}${embedUrl ? `<iframe class="meeting-frame" src="${escapeHtml(embedUrl)}" title="${escapeHtml(item.title)}" allow="camera; microphone; fullscreen; display-capture" referrerpolicy="no-referrer"></iframe>` : ""}</article>`;
+  }).join("") : `<div class="state-block"><p>No upcoming live classes for your enrolled courses.</p></div>`;
+</script>
+</body>
+</html>
