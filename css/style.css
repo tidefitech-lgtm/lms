@@ -1506,6 +1506,12 @@ textarea.input:focus {
   .landing-links > a:not(.btn) {
     display: none;
   }
+  .landing-links > a.landing-login {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    font-size: 0.82rem;
+  }
   .landing-hero-grid {
     grid-template-columns: 1fr;
     min-height: auto;
